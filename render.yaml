@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: desenho-colaborativo
+    env: java
+    buildCommand: "./mvnw clean package -DskipTests"
+    startCommand: "java -jar target/quarkus-app/quarkus-run.jar"
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: QUARKUS_HTTP_PORT
+        value: 8080
+      - key: JAVA_OPTS
+        value: "-Xmx512m"
