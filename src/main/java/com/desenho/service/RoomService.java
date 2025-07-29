@@ -73,4 +73,21 @@ public class RoomService {
     public void cleanupEmptyRooms() {
         rooms.entrySet().removeIf(entry -> entry.getValue().isEmpty());
     }
+    
+    // Get all rooms with their players
+    public Map<String, Room> getAllRooms() {
+        return new ConcurrentHashMap<>(rooms);
+    }
+    
+    // Get total number of active rooms
+    public int getActiveRoomsCount() {
+        return rooms.size();
+    }
+    
+    // Get total number of players across all rooms
+    public int getTotalPlayersCount() {
+        return rooms.values().stream()
+                .mapToInt(room -> room.getPlayers().size())
+                .sum();
+    }
 }

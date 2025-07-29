@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Usuários Logados</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .rooms-section {
+            padding: 20px;
+        }
+
+        .room-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .room-id {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .player-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+
+        .players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .player-tag {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 15px;
+            padding: 5px 12px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 1rem;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .last-update {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Admin - Desenho Colaborativo</h1>
+            <p>Usuários logados e salas ativas</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">0</div>
+                <div class="stat-label">Usuários Online</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeRooms">0</div>
+                <div class="stat-label">Salas Ativas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgUsersPerRoom">0</div>
+                <div class="stat-label">Média por Sala</div>
+            </div>
+        </div>
+
+        <div class="rooms-section">
+            <h2 style="margin-bottom: 20px; color: #495057;">Salas Ativas</h2>
+            <div id="roomsList">
+                <div class="empty-state">
+                    <h3>Carregando...</h3>
+                    <p>Obtendo informações das salas ativas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-update" id="lastUpdate">
+            Última atualização: Carregando...
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="loadData()">
+        🔄 Atualizar
+    </button>
+
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('/api/rooms/users');
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('totalUsers').textContent = data.totalUsers || 0;
+                document.getElementById('activeRooms').textContent = data.activeRooms || 0;
+                
+                const avgUsers = data.activeRooms > 0 ? 
+                    Math.round((data.totalUsers / data.activeRooms) * 10) / 10 : 0;
+                document.getElementById('avgUsersPerRoom').textContent = avgUsers;
+                
+                // Update rooms list
+                const roomsList = document.getElementById('roomsList');
+                
+                if (data.activeRooms === 0) {
+                    roomsList.innerHTML = `
+                        <div class="empty-state">
+                            <h3>Nenhuma sala ativa</h3>
+                            <p>Aguardando usuários se conectarem...</p>
+                        </div>
+                    `;
+                } else {
+                    roomsList.innerHTML = '';
+                    
+                    for (const [roomId, roomInfo] of Object.entries(data.roomDetails)) {
+                        const roomCard = document.createElement('div');
+                        roomCard.className = 'room-card';
+                        
+                        const playersHtml = Array.from(roomInfo.players)
+                            .map(player => `<span class="player-tag">${player}</span>`)
+                            .join('');
+                        
+                        roomCard.innerHTML = `
+                            <div class="room-header">
+                                <div class="room-id">Sala: ${roomId}</div>
+                                <div class="player-count">${roomInfo.playerCount} ${roomInfo.playerCount === 1 ? 'usuário' : 'usuários'}</div>
+                            </div>
+                            <div class="players-list">
+                                ${playersHtml || '<span class="player-tag">Nenhum usuário</span>'}
+                            </div>
+                        `;
+                        
+                        roomsList.appendChild(roomCard);
+                    }
+                }
+                
+                // Update timestamp
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = 
+                    `Última atualização: ${now.toLocaleString('pt-BR')}`;
+                    
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                document.getElementById('roomsList').innerHTML = `
+                    <div class="empty-state">
+                        <h3>Erro ao carregar dados</h3>
+                        <p>Verifique se o servidor está funcionando</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load data when page loads
+        loadData();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(loadData, 5000);
+    </script>
+</body>
+</html>
