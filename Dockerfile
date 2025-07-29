@@ -1,5 +1,5 @@
-# Use Maven OpenJDK 21 image with Maven pre-installed
-FROM maven:3.9.5-openjdk-21-slim
+# Use Maven with OpenJDK 21
+FROM maven:3.9-openjdk-21
 
 # Set working directory
 WORKDIR /app
