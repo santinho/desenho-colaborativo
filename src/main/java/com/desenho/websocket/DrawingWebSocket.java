@@ -35,6 +35,7 @@ public class DrawingWebSocket {
     @OnMessage
     public void onMessage(String message, Session session) {
         try {
+            logger.info("Received message: " + message + " from session: " + session.getId());
             DrawingMessage drawingMessage = objectMapper.readValue(message, DrawingMessage.class);
             handleMessage(drawingMessage, session);
         } catch (Exception e) {
@@ -63,6 +64,7 @@ public class DrawingWebSocket {
     }
     
     private void handleMessage(DrawingMessage message, Session session) {
+        logger.info("Handling message: " + message.getType() + " from session: " + session.getId());
         switch (message.getType()) {
             case JOIN_ROOM:
                 joinRoom(message.getRoomId(), message.getPlayerName(), session);
@@ -74,6 +76,7 @@ public class DrawingWebSocket {
                 updateCanvas(message.getRoomId(), message.getCanvasData(), session);
                 break;
             case DRAWING_ACTION:
+                logger.info("Broadcasting drawing action for room: " + message.getRoomId());
                 broadcastDrawingAction(message, session);
                 break;
             case CLEAR_CANVAS:
@@ -157,13 +160,18 @@ public class DrawingWebSocket {
     
     private void broadcastDrawingAction(DrawingMessage message, Session session) {
         String roomId = message.getRoomId();
+        logger.info("Broadcasting drawing action to room: " + roomId);
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
+            logger.info("Found " + sessions.size() + " sessions in room " + roomId);
             sessions.keySet().forEach(s -> {
                 if (!s.equals(session)) {
+                    logger.info("Sending drawing action to session: " + s.getId());
                     sendMessage(s, message);
                 }
             });
+        } else {
+            logger.warning("No sessions found for room: " + roomId);
         }
     }
     
