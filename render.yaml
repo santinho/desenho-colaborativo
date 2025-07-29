@@ -1,16 +1,8 @@
 services:
   - type: web
     name: desenho-colaborativo
-    env: java
-    runtime: java
-    buildCommand: "chmod +x ./mvnw && ./mvnw clean package -DskipTests"
-    startCommand: "java -Dquarkus.http.host=0.0.0.0 -Dquarkus.http.port=$PORT -jar target/quarkus-app/quarkus-run.jar"
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PORT
         value: 8080
-      - key: QUARKUS_HTTP_PORT
-        value: 8080
-      - key: JAVA_OPTS
-        value: "-Xmx512m"
-      - key: JAVA_TOOL_OPTIONS
-        value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"

@@ -1,0 +1,38 @@
+# Ignore build outputs
+target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Ignore Git
+.git/
+.gitignore
+
+# Ignore logs
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore node modules if any
+node_modules/
+
+# Ignore documentation
+README.md
+render.yaml
+build.sh
+start.sh
+Procfile
