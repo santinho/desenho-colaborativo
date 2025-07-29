@@ -1,5 +1,5 @@
-# Use OpenJDK 21 as base image
-FROM openjdk:21-jdk-slim
+# Use Maven OpenJDK 21 image with Maven pre-installed
+FROM maven:3.9.5-openjdk-21-slim
 
 # Set working directory
 WORKDIR /app
@@ -7,11 +7,8 @@ WORKDIR /app
 # Copy all project files
 COPY . .
 
-# Make mvnw executable
-RUN chmod +x mvnw
-
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Build the application using Maven directly
+RUN mvn clean package -DskipTests
 
 # Expose port
 EXPOSE 8080
