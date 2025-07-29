@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desenho Colaborativo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="loginScreen" class="screen">
+        <div class="container">
+            <h1>🎨 Desenho Colaborativo</h1>
+            <div class="login-form">
+                <h2>Entrar em uma Sala</h2>
+                <input type="text" id="roomCode" placeholder="Digite o código da sala" maxlength="6">
+                <input type="text" id="playerName" placeholder="Seu nome" maxlength="20">
+                <button id="joinRoom">Entrar na Sala</button>
+                <div class="divider">ou</div>
+                <button id="createRoom">Criar Nova Sala</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameScreen" class="screen hidden">
+        <div class="header">
+            <div class="room-info">
+                <span>Sala: <strong id="currentRoom"></strong></span>
+                <span>Jogador: <strong id="currentPlayer"></strong></span>
+            </div>
+            <div class="players-list">
+                <span>Jogadores online: </span>
+                <span id="playersList"></span>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="tool-group">
+                <button id="brushTool" class="tool active" title="Pincel">
+                    <span>🖌️</span>
+                </button>
+                <button id="eraserTool" class="tool" title="Borracha">
+                    <span>🧽</span>
+                </button>
+                <button id="sprayTool" class="tool" title="Spray">
+                    <span>💨</span>
+                </button>
+            </div>
+
+            <div class="tool-group">
+                <label for="brushSize">Tamanho:</label>
+                <input type="range" id="brushSize" min="1" max="50" value="5">
+                <span id="sizeDisplay">5</span>
+            </div>
+
+            <div class="tool-group">
+                <label>Cor:</label>
+                <div class="color-palette">
+                    <input type="color" id="colorPicker" value="#000000">
+                    <div class="preset-colors">
+                        <div class="color-btn" data-color="#000000" style="background: #000000"></div>
+                        <div class="color-btn" data-color="#ff0000" style="background: #ff0000"></div>
+                        <div class="color-btn" data-color="#00ff00" style="background: #00ff00"></div>
+                        <div class="color-btn" data-color="#0000ff" style="background: #0000ff"></div>
+                        <div class="color-btn" data-color="#ffff00" style="background: #ffff00"></div>
+                        <div class="color-btn" data-color="#ff00ff" style="background: #ff00ff"></div>
+                        <div class="color-btn" data-color="#00ffff" style="background: #00ffff"></div>
+                        <div class="color-btn" data-color="#ffffff" style="background: #ffffff; border: 1px solid #ccc;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <button id="clearCanvas" class="tool danger" title="Limpar tudo">
+                    🗑️ Limpar
+                </button>
+            </div>
+
+            <div class="tool-group">
+                <button id="leaveRoom" class="tool secondary">
+                    🚪 Sair
+                </button>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="drawingCanvas"></canvas>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
