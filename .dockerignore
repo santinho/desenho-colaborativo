@@ -14,7 +14,6 @@ target/
 
 # Ignore Git
 .git/
-.gitignore
 
 # Ignore logs
 *.log
@@ -29,10 +28,3 @@ Thumbs.db
 
 # Ignore node modules if any
 node_modules/
-
-# Ignore documentation
-README.md
-render.yaml
-build.sh
-start.sh
-Procfile

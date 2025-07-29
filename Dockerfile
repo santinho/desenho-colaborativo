@@ -4,18 +4,11 @@ FROM openjdk:21-jdk-slim
 # Set working directory
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
-COPY mvnw mvnw.cmd pom.xml ./
-COPY .mvn .mvn
+# Copy all project files
+COPY . .
 
 # Make mvnw executable
 RUN chmod +x mvnw
-
-# Download dependencies (this layer will be cached if pom.xml doesn't change)
-RUN ./mvnw dependency:go-offline -B
-
-# Copy source code
-COPY src src
 
 # Build the application
 RUN ./mvnw clean package -DskipTests
