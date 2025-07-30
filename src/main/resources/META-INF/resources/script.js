@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130001 - Chrome Mobile Fix
+ * Versão: 20250130002 - Chrome Mobile Fix + Compact UI
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -56,11 +56,29 @@ class DrawingGame {
             this.currentColor = e.target.value;
         });
         
+        // Color picker click to show/hide preset colors
+        document.getElementById('colorPicker').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const presetColors = document.querySelector('.preset-colors');
+            presetColors.classList.toggle('hidden');
+        });
+        
+        // Hide preset colors when clicking outside
+        document.addEventListener('click', (e) => {
+            const colorGroup = document.querySelector('.color-group');
+            const presetColors = document.querySelector('.preset-colors');
+            if (!colorGroup.contains(e.target)) {
+                presetColors.classList.add('hidden');
+            }
+        });
+        
         // Preset colors
         document.querySelectorAll('.color-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.currentColor = btn.dataset.color;
                 document.getElementById('colorPicker').value = this.currentColor;
+                document.querySelector('.preset-colors').classList.add('hidden');
             });
         });
         

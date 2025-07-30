@@ -11,7 +11,7 @@
     <meta http-equiv="Expires" content="0">
     
     <!-- Versioned CSS and JS to prevent cache -->
-    <link rel="stylesheet" href="styles.css?v=20250130001">
+    <link rel="stylesheet" href="styles.css?v=20250130002">
 </head>
 <body>
     <div id="loginScreen" class="screen">
@@ -45,15 +45,9 @@
 
         <div class="toolbar">
             <div class="tool-group">
-                <button id="brushTool" class="tool active" title="Pincel">
-                    <span>🖌️</span>
-                </button>
-                <button id="eraserTool" class="tool" title="Borracha">
-                    <span>🧽</span>
-                </button>
-                <button id="sprayTool" class="tool" title="Spray">
-                    <span>💨</span>
-                </button>
+                <button id="brushTool" class="tool active" title="Pincel">🖌️</button>
+                <button id="eraserTool" class="tool" title="Borracha">🧽</button>
+                <button id="sprayTool" class="tool" title="Spray">💨</button>
             </div>
 
             <div class="tool-group">
@@ -62,11 +56,11 @@
                 <span id="sizeDisplay">5</span>
             </div>
 
-            <div class="tool-group">
+            <div class="tool-group color-group">
                 <label>Cor:</label>
                 <div class="color-palette">
-                    <input type="color" id="colorPicker" value="#000000">
-                    <div class="preset-colors">
+                    <input type="color" id="colorPicker" value="#000000" title="Clique para mais cores">
+                    <div class="preset-colors hidden">
                         <div class="color-btn" data-color="#000000" style="background: #000000"></div>
                         <div class="color-btn" data-color="#ff0000" style="background: #ff0000"></div>
                         <div class="color-btn" data-color="#00ff00" style="background: #00ff00"></div>
@@ -80,15 +74,7 @@
             </div>
 
             <div class="tool-group">
-                <button id="clearCanvas" class="tool danger" title="Limpar tudo">
-                    🗑️ Limpar
-                </button>
-            </div>
-
-            <div class="tool-group">
-                <button id="leaveRoom" class="tool secondary">
-                    🚪 Sair
-                </button>
+                <button id="leaveRoom" class="tool secondary">🚪 Sair</button>
             </div>
         </div>
 
@@ -98,6 +84,6 @@
     </div>
 
     <!-- Versioned JavaScript to prevent cache -->
-    <script src="script.js?v=20250130001"></script>
+    <script src="script.js?v=20250130002"></script>
 </body>
 </html>
