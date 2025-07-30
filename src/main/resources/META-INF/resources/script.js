@@ -73,6 +73,16 @@ class DrawingGame {
                 clearInterval(this.reconnectInterval);
                 this.reconnectInterval = null;
             }
+            
+            // Process queued messages
+            if (this.messageQueue && this.messageQueue.length > 0) {
+                console.log('Processing', this.messageQueue.length, 'queued messages');
+                this.messageQueue.forEach(message => {
+                    console.log('Sending queued message:', message);
+                    this.websocket.send(JSON.stringify(message));
+                });
+                this.messageQueue = [];
+            }
         };
         
         this.websocket.onmessage = (event) => {
@@ -136,8 +146,26 @@ class DrawingGame {
     }
 
     sendWebSocketMessage(message) {
+        console.log('Attempting to send WebSocket message:', message);
+        
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            console.log('WebSocket is OPEN, sending immediately:', message);
             this.websocket.send(JSON.stringify(message));
+        } else {
+            console.warn('WebSocket not ready, queueing message. State:', 
+                this.websocket ? this.websocket.readyState : 'null');
+            
+            // Queue message to send when connection is ready
+            if (!this.messageQueue) {
+                this.messageQueue = [];
+            }
+            this.messageQueue.push(message);
+            
+            // If not connecting, try to connect
+            if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
+                console.log('WebSocket closed, attempting to reconnect...');
+                this.connectWebSocket();
+            }
         }
     }
 
