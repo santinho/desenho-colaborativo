@@ -88,9 +88,12 @@ public class DrawingWebSocket {
     }
     
     private void joinRoom(String roomId, String playerName, Session session) {
+        logger.info("Attempting to join room: " + roomId + " with player: " + playerName + " session: " + session.getId());
+        
         // Check if player name is already taken in this room
         Room room = roomService.getRoom(roomId);
         if (room != null && room.getPlayers().contains(playerName)) {
+            logger.warning("Player name " + playerName + " already exists in room " + roomId);
             sendErrorMessage(session, "Nome já está sendo usado nesta sala");
             return;
         }
@@ -98,27 +101,31 @@ public class DrawingWebSocket {
         // Remove from previous room if any
         String previousRoom = sessionToRoom.get(session);
         if (previousRoom != null) {
+            logger.info("Removing player from previous room: " + previousRoom);
             leaveRoom(previousRoom, sessionToPlayer.get(session), session);
         }
         
         // Add to new room
+        logger.info("Adding player " + playerName + " to room " + roomId);
         roomService.addPlayerToRoom(roomId, playerName);
         sessionToRoom.put(session, roomId);
         sessionToPlayer.put(session, playerName);
         
         // Add session to room sessions
         roomSessions.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(session, playerName);
+        logger.info("Added session to roomSessions. Room " + roomId + " now has " + roomSessions.get(roomId).size() + " sessions");
         
         // Send current canvas data to the new player
         room = roomService.getRoom(roomId);
         if (room != null && room.getCanvasData() != null) {
+            logger.info("Sending existing canvas data to new player");
             sendCanvasData(session, room.getCanvasData());
         }
         
         // Broadcast updated player list
         broadcastPlayerList(roomId);
         
-        logger.info("Player " + playerName + " joined room " + roomId);
+        logger.info("Player " + playerName + " successfully joined room " + roomId);
     }
     
     private void leaveRoom(String roomId, String playerName, Session session) {
