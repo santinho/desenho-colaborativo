@@ -146,15 +146,9 @@ class DrawingGame {
     }
 
     sendWebSocketMessage(message) {
-        console.log('Attempting to send WebSocket message:', message);
-        
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-            console.log('WebSocket is OPEN, sending immediately:', message);
             this.websocket.send(JSON.stringify(message));
         } else {
-            console.warn('WebSocket not ready, queueing message. State:', 
-                this.websocket ? this.websocket.readyState : 'null');
-            
             // Queue message to send when connection is ready
             if (!this.messageQueue) {
                 this.messageQueue = [];
@@ -170,34 +164,25 @@ class DrawingGame {
     }
 
     handleWebSocketMessage(message) {
-        console.log('Received WebSocket message:', message);
         switch (message.type) {
             case 'CANVAS_UPDATE':
-                console.log('Processing CANVAS_UPDATE message');
                 if (message.canvasData) {
                     // Only load canvas data if current canvas is mostly empty
                     if (this.isCanvasEmpty()) {
-                        console.log('Canvas is empty, loading received canvas data');
                         this.loadCanvasFromData(message.canvasData);
-                    } else {
-                        console.log('Canvas has content, ignoring CANVAS_UPDATE to prevent overwriting');
                     }
                 }
                 break;
             case 'DRAWING_ACTION':
-                console.log('Processing DRAWING_ACTION message:', message.drawingAction);
                 this.renderDrawingAction(message.drawingAction);
                 break;
             case 'CLEAR_CANVAS':
-                console.log('Processing CLEAR_CANVAS message');
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 break;
             case 'PLAYER_LIST_UPDATE':
-                console.log('Processing PLAYER_LIST_UPDATE message');
                 this.updatePlayersList(message.playerName);
                 break;
             default:
-                console.log('Unknown message type or error:', message);
                 if (message.error) {
                     alert(message.error);
                 }
@@ -393,7 +378,6 @@ class DrawingGame {
         const totalPixels = this.canvas.width * this.canvas.height;
         const threshold = totalPixels * 0.01;
         
-        console.log(`Canvas check: ${nonTransparentPixels} non-transparent pixels out of ${totalPixels} (threshold: ${threshold})`);
         return nonTransparentPixels < threshold;
     }
 
@@ -512,13 +496,6 @@ class DrawingGame {
     }
 
     sendDrawingAction(startX, startY, endX, endY, isStart, isEnd) {
-        console.log('Sending drawing action:', {
-            tool: this.currentTool,
-            color: this.currentColor,
-            size: this.currentSize,
-            startX, startY, endX, endY, isStart, isEnd
-        });
-        
         this.sendWebSocketMessage({
             type: 'DRAWING_ACTION',
             roomId: this.currentRoom,
