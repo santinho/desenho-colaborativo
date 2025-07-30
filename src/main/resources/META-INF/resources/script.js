@@ -57,15 +57,37 @@ class DrawingGame {
                 document.getElementById('colorPicker').value = this.currentColor;
             });
         });
+        
+        // Chrome mobile specific: Handle page visibility changes
+        const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isChromeOnMobile) {
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && this.currentRoom && !this.hasJoinedRoom) {
+                    console.log('Chrome mobile: Page became visible, checking connection...');
+                    setTimeout(() => {
+                        if (!this.hasJoinedRoom && this.isConnected) {
+                            console.log('Chrome mobile: Retrying JOIN_ROOM after visibility change');
+                            this.sendJoinRoomMessage();
+                        }
+                    }, 500);
+                }
+            });
+        }
     }
 
     connectWebSocket() {
         console.log('connectWebSocket called - protocol:', window.location.protocol, 'host:', window.location.host);
+        console.log('User agent:', navigator.userAgent);
+        
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/drawing`;
         console.log('WebSocket URL:', wsUrl);
         
         this.websocket = new WebSocket(wsUrl);
+        
+        // Chrome mobile specific: Set longer timeout for connection
+        const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('Is Chrome on mobile:', isChromeOnMobile);
         
         this.websocket.onopen = () => {
             console.log('WebSocket connected successfully');
@@ -90,9 +112,10 @@ class DrawingGame {
             // If we have room info but haven't joined yet, send JOIN_ROOM immediately
             if (this.currentRoom && this.playerName && !this.hasJoinedRoom) {
                 console.log('Auto-joining room on WebSocket connect');
+                const delay = isChromeOnMobile ? 300 : 100; // Longer delay for Chrome mobile
                 setTimeout(() => {
                     this.sendJoinRoomMessage();
-                }, 100);
+                }, delay);
             }
         };
         
@@ -224,6 +247,8 @@ class DrawingGame {
         console.log('WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
         console.log('isConnected:', this.isConnected);
         
+        const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
         if (this.currentRoom && this.playerName) {
             console.log('Sending JOIN_ROOM message for:', this.currentRoom, this.playerName);
             const joinMessage = {
@@ -239,6 +264,16 @@ class DrawingGame {
                 try {
                     this.websocket.send(JSON.stringify(joinMessage));
                     console.log('JOIN_ROOM sent successfully');
+                    
+                    // Chrome mobile: Send additional attempt after short delay
+                    if (isChromeOnMobile) {
+                        setTimeout(() => {
+                            if (!this.hasJoinedRoom && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                                console.log('Chrome mobile: Sending duplicate JOIN_ROOM as backup');
+                                this.websocket.send(JSON.stringify(joinMessage));
+                            }
+                        }, 500);
+                    }
                 } catch (error) {
                     console.error('Error sending JOIN_ROOM:', error);
                     this.sendWebSocketMessage(joinMessage);
@@ -250,13 +285,14 @@ class DrawingGame {
             
             // Set a timeout to retry if we haven't joined successfully
             if (!this.joinRetryTimeout) {
+                const retryDelay = isChromeOnMobile ? 2000 : 3000; // Shorter retry for Chrome mobile
                 this.joinRetryTimeout = setTimeout(() => {
                     if (!this.hasJoinedRoom && this.currentRoom) {
                         console.log('JOIN_ROOM failed, retrying... hasJoinedRoom:', this.hasJoinedRoom);
                         this.sendJoinRoomMessage();
                     }
                     this.joinRetryTimeout = null;
-                }, 3000);
+                }, retryDelay);
             }
         } else {
             console.warn('Cannot send JOIN_ROOM - missing room or player name');
@@ -298,10 +334,16 @@ class DrawingGame {
                 this.showGameScreen();
                 
                 // Join the room via WebSocket
-                // Use longer delay for mobile devices
+                // Use longer delay for mobile devices, especially Chrome mobile
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                const delay = isMobile ? 1500 : 500;
-                console.log('Detected mobile:', isMobile, 'using delay:', delay);
+                const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && isMobile;
+                let delay = 500; // Default
+                if (isChromeOnMobile) {
+                    delay = 2000; // Chrome mobile needs more time
+                } else if (isMobile) {
+                    delay = 1500; // Other mobile browsers
+                }
+                console.log('Detected mobile:', isMobile, 'Chrome mobile:', isChromeOnMobile, 'using delay:', delay);
                 setTimeout(() => {
                     this.sendJoinRoomMessage();
                 }, delay);
@@ -334,10 +376,16 @@ class DrawingGame {
         this.showGameScreen();
         
         // Join the room via WebSocket
-        // Use longer delay for mobile devices
+        // Use longer delay for mobile devices, especially Chrome mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const delay = isMobile ? 1500 : 500;
-        console.log('Detected mobile:', isMobile, 'using delay:', delay);
+        const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && isMobile;
+        let delay = 500; // Default
+        if (isChromeOnMobile) {
+            delay = 2000; // Chrome mobile needs more time
+        } else if (isMobile) {
+            delay = 1500; // Other mobile browsers
+        }
+        console.log('Detected mobile:', isMobile, 'Chrome mobile:', isChromeOnMobile, 'using delay:', delay);
         setTimeout(() => {
             this.sendJoinRoomMessage();
         }, delay);
