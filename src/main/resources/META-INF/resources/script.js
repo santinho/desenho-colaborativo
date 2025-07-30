@@ -1,3 +1,9 @@
+/**
+ * Desenho Colaborativo - Script Principal
+ * Versão: 20250130001 - Chrome Mobile Fix
+ * Cache-Control: no-cache, no-store, must-revalidate
+ */
+
 class DrawingGame {
     constructor() {
         this.canvas = null;
