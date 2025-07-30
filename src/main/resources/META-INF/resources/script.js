@@ -60,13 +60,15 @@ class DrawingGame {
     }
 
     connectWebSocket() {
+        console.log('connectWebSocket called - protocol:', window.location.protocol, 'host:', window.location.host);
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/drawing`;
+        console.log('WebSocket URL:', wsUrl);
         
         this.websocket = new WebSocket(wsUrl);
         
         this.websocket.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('WebSocket connected successfully');
             this.isConnected = true;
             this.updateConnectionStatus(true);
             
@@ -78,8 +80,8 @@ class DrawingGame {
             // Process queued messages
             if (this.messageQueue && this.messageQueue.length > 0) {
                 console.log('Processing', this.messageQueue.length, 'queued messages');
-                this.messageQueue.forEach(message => {
-                    console.log('Sending queued message:', message);
+                this.messageQueue.forEach((message, index) => {
+                    console.log('Sending queued message', index + 1, ':', message);
                     this.websocket.send(JSON.stringify(message));
                 });
                 this.messageQueue = [];
@@ -95,11 +97,17 @@ class DrawingGame {
         };
         
         this.websocket.onmessage = (event) => {
-            this.handleWebSocketMessage(JSON.parse(event.data));
+            console.log('WebSocket message received:', event.data);
+            try {
+                const message = JSON.parse(event.data);
+                this.handleWebSocketMessage(message);
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+            }
         };
         
-        this.websocket.onclose = () => {
-            console.log('WebSocket disconnected');
+        this.websocket.onclose = (event) => {
+            console.log('WebSocket disconnected - code:', event.code, 'reason:', event.reason);
             this.isConnected = false;
             this.updateConnectionStatus(false);
             this.scheduleReconnect();
@@ -155,9 +163,13 @@ class DrawingGame {
     }
 
     sendWebSocketMessage(message) {
+        console.log('sendWebSocketMessage called with:', message);
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            console.log('WebSocket is open, sending message:', JSON.stringify(message));
             this.websocket.send(JSON.stringify(message));
         } else {
+            console.warn('WebSocket not ready, queueing message. State:', 
+                this.websocket ? this.websocket.readyState : 'null');
             // Queue message to send when connection is ready
             if (!this.messageQueue) {
                 this.messageQueue = [];
@@ -208,24 +220,46 @@ class DrawingGame {
     }
 
     sendJoinRoomMessage() {
+        console.log('sendJoinRoomMessage called - currentRoom:', this.currentRoom, 'playerName:', this.playerName);
+        console.log('WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
+        console.log('isConnected:', this.isConnected);
+        
         if (this.currentRoom && this.playerName) {
             console.log('Sending JOIN_ROOM message for:', this.currentRoom, this.playerName);
-            this.sendWebSocketMessage({
+            const joinMessage = {
                 type: 'JOIN_ROOM',
                 roomId: this.currentRoom,
                 playerName: this.playerName
-            });
+            };
+            console.log('JOIN_ROOM message object:', joinMessage);
+            
+            // Force immediate send if WebSocket is open, regardless of this.isConnected flag
+            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                console.log('Force sending JOIN_ROOM directly via WebSocket');
+                try {
+                    this.websocket.send(JSON.stringify(joinMessage));
+                    console.log('JOIN_ROOM sent successfully');
+                } catch (error) {
+                    console.error('Error sending JOIN_ROOM:', error);
+                    this.sendWebSocketMessage(joinMessage);
+                }
+            } else {
+                console.log('WebSocket not ready, using sendWebSocketMessage method');
+                this.sendWebSocketMessage(joinMessage);
+            }
             
             // Set a timeout to retry if we haven't joined successfully
             if (!this.joinRetryTimeout) {
                 this.joinRetryTimeout = setTimeout(() => {
-                    if (!this.hasJoinedRoom && this.isConnected && this.currentRoom) {
-                        console.log('JOIN_ROOM failed, retrying...');
+                    if (!this.hasJoinedRoom && this.currentRoom) {
+                        console.log('JOIN_ROOM failed, retrying... hasJoinedRoom:', this.hasJoinedRoom);
                         this.sendJoinRoomMessage();
                     }
                     this.joinRetryTimeout = null;
                 }, 3000);
             }
+        } else {
+            console.warn('Cannot send JOIN_ROOM - missing room or player name');
         }
     }
 
@@ -264,9 +298,13 @@ class DrawingGame {
                 this.showGameScreen();
                 
                 // Join the room via WebSocket
+                // Use longer delay for mobile devices
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const delay = isMobile ? 1500 : 500;
+                console.log('Detected mobile:', isMobile, 'using delay:', delay);
                 setTimeout(() => {
                     this.sendJoinRoomMessage();
-                }, 500);
+                }, delay);
             } else {
                 alert('Erro ao criar sala. Tente novamente.');
             }
@@ -296,9 +334,13 @@ class DrawingGame {
         this.showGameScreen();
         
         // Join the room via WebSocket
+        // Use longer delay for mobile devices
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const delay = isMobile ? 1500 : 500;
+        console.log('Detected mobile:', isMobile, 'using delay:', delay);
         setTimeout(() => {
             this.sendJoinRoomMessage();
-        }, 500);
+        }, delay);
     }
 
     leaveRoom() {
