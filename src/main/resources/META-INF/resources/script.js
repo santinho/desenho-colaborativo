@@ -13,6 +13,7 @@ class DrawingGame {
         this.websocket = null;
         this.reconnectInterval = null;
         this.isConnected = false;
+        this.hasJoinedRoom = false;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -82,6 +83,14 @@ class DrawingGame {
                     this.websocket.send(JSON.stringify(message));
                 });
                 this.messageQueue = [];
+            }
+            
+            // If we have room info but haven't joined yet, send JOIN_ROOM immediately
+            if (this.currentRoom && this.playerName && !this.hasJoinedRoom) {
+                console.log('Auto-joining room on WebSocket connect');
+                setTimeout(() => {
+                    this.sendJoinRoomMessage();
+                }, 100);
             }
         };
         
@@ -180,12 +189,43 @@ class DrawingGame {
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 break;
             case 'PLAYER_LIST_UPDATE':
+                console.log('Received player list update:', message.playerName);
                 this.updatePlayersList(message.playerName);
+                // Mark as successfully joined when we receive player list
+                this.hasJoinedRoom = true;
+                // Clear retry timeout since we successfully joined
+                if (this.joinRetryTimeout) {
+                    clearTimeout(this.joinRetryTimeout);
+                    this.joinRetryTimeout = null;
+                }
                 break;
             default:
                 if (message.error) {
+                    console.error('WebSocket error:', message.error);
                     alert(message.error);
                 }
+        }
+    }
+
+    sendJoinRoomMessage() {
+        if (this.currentRoom && this.playerName) {
+            console.log('Sending JOIN_ROOM message for:', this.currentRoom, this.playerName);
+            this.sendWebSocketMessage({
+                type: 'JOIN_ROOM',
+                roomId: this.currentRoom,
+                playerName: this.playerName
+            });
+            
+            // Set a timeout to retry if we haven't joined successfully
+            if (!this.joinRetryTimeout) {
+                this.joinRetryTimeout = setTimeout(() => {
+                    if (!this.hasJoinedRoom && this.isConnected && this.currentRoom) {
+                        console.log('JOIN_ROOM failed, retrying...');
+                        this.sendJoinRoomMessage();
+                    }
+                    this.joinRetryTimeout = null;
+                }, 3000);
+            }
         }
     }
 
@@ -225,11 +265,7 @@ class DrawingGame {
                 
                 // Join the room via WebSocket
                 setTimeout(() => {
-                    this.sendWebSocketMessage({
-                        type: 'JOIN_ROOM',
-                        roomId: this.currentRoom,
-                        playerName: this.playerName
-                    });
+                    this.sendJoinRoomMessage();
                 }, 500);
             } else {
                 alert('Erro ao criar sala. Tente novamente.');
@@ -261,11 +297,7 @@ class DrawingGame {
         
         // Join the room via WebSocket
         setTimeout(() => {
-            this.sendWebSocketMessage({
-                type: 'JOIN_ROOM',
-                roomId: this.currentRoom,
-                playerName: this.playerName
-            });
+            this.sendJoinRoomMessage();
         }, 500);
     }
 
@@ -287,9 +319,15 @@ class DrawingGame {
             this.reconnectInterval = null;
         }
         
+        if (this.joinRetryTimeout) {
+            clearTimeout(this.joinRetryTimeout);
+            this.joinRetryTimeout = null;
+        }
+        
         this.currentRoom = null;
         this.playerName = null;
         this.isConnected = false;
+        this.hasJoinedRoom = false;
         this.showLoginScreen();
     }
 

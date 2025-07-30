@@ -65,6 +65,7 @@ public class DrawingWebSocket {
     private void handleMessage(DrawingMessage message, Session session) {
         switch (message.getType()) {
             case JOIN_ROOM:
+                logger.info("JOIN_ROOM request: " + message.getRoomId() + " player: " + message.getPlayerName() + " session: " + session.getId());
                 joinRoom(message.getRoomId(), message.getPlayerName(), session);
                 break;
             case LEAVE_ROOM:
@@ -80,6 +81,7 @@ public class DrawingWebSocket {
                 clearCanvas(message.getRoomId(), session);
                 break;
             default:
+                logger.warning("Unknown message type: " + message.getType() + " from session: " + session.getId());
                 sendErrorMessage(session, "Unknown message type");
         }
     }
