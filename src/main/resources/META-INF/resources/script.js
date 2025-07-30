@@ -104,7 +104,20 @@ class DrawingGame {
                 console.log('Processing', this.messageQueue.length, 'queued messages');
                 this.messageQueue.forEach((message, index) => {
                     console.log('Sending queued message', index + 1, ':', message);
-                    this.websocket.send(JSON.stringify(message));
+                    if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+                        console.log('Chrome mobile: Processing queued JOIN_ROOM message');
+                    }
+                    try {
+                        this.websocket.send(JSON.stringify(message));
+                        if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+                            console.log('Chrome mobile: Queued JOIN_ROOM sent successfully');
+                        }
+                    } catch (error) {
+                        console.error('Error sending queued message:', error);
+                        if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+                            console.error('Chrome mobile: Failed to send queued JOIN_ROOM:', error);
+                        }
+                    }
                 });
                 this.messageQueue = [];
             }
@@ -187,9 +200,28 @@ class DrawingGame {
 
     sendWebSocketMessage(message) {
         console.log('sendWebSocketMessage called with:', message);
+        
+        // Chrome mobile specific logging for JOIN_ROOM
+        const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+            console.log('Chrome mobile: sendWebSocketMessage called for JOIN_ROOM');
+            console.log('Chrome mobile: Message details:', JSON.stringify(message));
+            console.log('Chrome mobile: WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
+        }
+        
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
             console.log('WebSocket is open, sending message:', JSON.stringify(message));
-            this.websocket.send(JSON.stringify(message));
+            try {
+                this.websocket.send(JSON.stringify(message));
+                if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+                    console.log('Chrome mobile: JOIN_ROOM successfully sent via sendWebSocketMessage');
+                }
+            } catch (error) {
+                console.error('Error sending WebSocket message:', error);
+                if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+                    console.error('Chrome mobile: Failed to send JOIN_ROOM via sendWebSocketMessage:', error);
+                }
+            }
         } else {
             console.warn('WebSocket not ready, queueing message. State:', 
                 this.websocket ? this.websocket.readyState : 'null');
@@ -198,6 +230,10 @@ class DrawingGame {
                 this.messageQueue = [];
             }
             this.messageQueue.push(message);
+            
+            if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
+                console.log('Chrome mobile: JOIN_ROOM queued for later sending');
+            }
             
             // If not connecting, try to connect
             if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
@@ -248,6 +284,7 @@ class DrawingGame {
         console.log('isConnected:', this.isConnected);
         
         const isChromeOnMobile = /Chrome/.test(navigator.userAgent) && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('Chrome mobile detected:', isChromeOnMobile);
         
         if (this.currentRoom && this.playerName) {
             console.log('Sending JOIN_ROOM message for:', this.currentRoom, this.playerName);
@@ -256,36 +293,81 @@ class DrawingGame {
                 roomId: this.currentRoom,
                 playerName: this.playerName
             };
-            console.log('JOIN_ROOM message object:', joinMessage);
+            console.log('JOIN_ROOM message object:', JSON.stringify(joinMessage));
             
-            // Force immediate send if WebSocket is open, regardless of this.isConnected flag
-            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                console.log('Force sending JOIN_ROOM directly via WebSocket');
-                try {
-                    this.websocket.send(JSON.stringify(joinMessage));
-                    console.log('JOIN_ROOM sent successfully');
-                    
-                    // Chrome mobile: Send additional attempt after short delay
-                    if (isChromeOnMobile) {
-                        setTimeout(() => {
-                            if (!this.hasJoinedRoom && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                                console.log('Chrome mobile: Sending duplicate JOIN_ROOM as backup');
-                                this.websocket.send(JSON.stringify(joinMessage));
-                            }
-                        }, 500);
+            // Chrome mobile specific: Multiple aggressive attempts
+            if (isChromeOnMobile) {
+                console.log('Chrome mobile: Using aggressive JOIN_ROOM strategy');
+                
+                // Attempt 1: Immediate send
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    console.log('Chrome mobile: Attempt 1 - Immediate send');
+                    try {
+                        this.websocket.send(JSON.stringify(joinMessage));
+                        console.log('Chrome mobile: Attempt 1 sent');
+                    } catch (error) {
+                        console.error('Chrome mobile: Attempt 1 failed:', error);
                     }
-                } catch (error) {
-                    console.error('Error sending JOIN_ROOM:', error);
+                }
+                
+                // Attempt 2: After 100ms
+                setTimeout(() => {
+                    if (!this.hasJoinedRoom && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        console.log('Chrome mobile: Attempt 2 - After 100ms');
+                        try {
+                            this.websocket.send(JSON.stringify(joinMessage));
+                            console.log('Chrome mobile: Attempt 2 sent');
+                        } catch (error) {
+                            console.error('Chrome mobile: Attempt 2 failed:', error);
+                        }
+                    }
+                }, 100);
+                
+                // Attempt 3: After 500ms
+                setTimeout(() => {
+                    if (!this.hasJoinedRoom && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        console.log('Chrome mobile: Attempt 3 - After 500ms');
+                        try {
+                            this.websocket.send(JSON.stringify(joinMessage));
+                            console.log('Chrome mobile: Attempt 3 sent');
+                        } catch (error) {
+                            console.error('Chrome mobile: Attempt 3 failed:', error);
+                        }
+                    }
+                }, 500);
+                
+                // Attempt 4: After 1000ms
+                setTimeout(() => {
+                    if (!this.hasJoinedRoom && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                        console.log('Chrome mobile: Attempt 4 - After 1000ms');
+                        try {
+                            this.websocket.send(JSON.stringify(joinMessage));
+                            console.log('Chrome mobile: Attempt 4 sent');
+                        } catch (error) {
+                            console.error('Chrome mobile: Attempt 4 failed:', error);
+                        }
+                    }
+                }, 1000);
+            } else {
+                // Standard behavior for non-Chrome mobile
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    console.log('Standard: Sending JOIN_ROOM directly via WebSocket');
+                    try {
+                        this.websocket.send(JSON.stringify(joinMessage));
+                        console.log('Standard: JOIN_ROOM sent successfully');
+                    } catch (error) {
+                        console.error('Standard: Error sending JOIN_ROOM:', error);
+                        this.sendWebSocketMessage(joinMessage);
+                    }
+                } else {
+                    console.log('Standard: WebSocket not ready, using sendWebSocketMessage method');
                     this.sendWebSocketMessage(joinMessage);
                 }
-            } else {
-                console.log('WebSocket not ready, using sendWebSocketMessage method');
-                this.sendWebSocketMessage(joinMessage);
             }
             
             // Set a timeout to retry if we haven't joined successfully
             if (!this.joinRetryTimeout) {
-                const retryDelay = isChromeOnMobile ? 2000 : 3000; // Shorter retry for Chrome mobile
+                const retryDelay = isChromeOnMobile ? 1500 : 3000; // Shorter retry for Chrome mobile
                 this.joinRetryTimeout = setTimeout(() => {
                     if (!this.hasJoinedRoom && this.currentRoom) {
                         console.log('JOIN_ROOM failed, retrying... hasJoinedRoom:', this.hasJoinedRoom);
