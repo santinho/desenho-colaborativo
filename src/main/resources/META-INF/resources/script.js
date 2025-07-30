@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130002 - Chrome Mobile Fix + Compact UI
+ * Versão: 20250130003 - Fix funcionalidades quebradas (cor, tamanho, ferramentas)
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -38,7 +38,6 @@ class DrawingGame {
 
         // Game screen events
         document.getElementById('leaveRoom').addEventListener('click', () => this.leaveRoom());
-        document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
         
         // Tool selection
         document.getElementById('brushTool').addEventListener('click', () => this.selectTool('brush'));
