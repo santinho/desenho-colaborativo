@@ -221,9 +221,10 @@ public class DrawingWebSocket {
     private void sendMessage(Session session, DrawingMessage message) {
         try {
             if (session.isOpen()) {
-                session.getBasicRemote().sendText(objectMapper.writeValueAsString(message));
+                // Use async remote to avoid blocking IO thread
+                session.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.severe("Error sending message to session " + session.getId() + ": " + e.getMessage());
         }
     }
@@ -231,9 +232,10 @@ public class DrawingWebSocket {
     private void sendErrorMessage(Session session, String error) {
         try {
             if (session.isOpen()) {
-                session.getBasicRemote().sendText("{\"error\":\"" + error + "\"}");
+                // Use async remote to avoid blocking IO thread
+                session.getAsyncRemote().sendText("{\"error\":\"" + error + "\"}");
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.severe("Error sending error message: " + e.getMessage());
         }
     }

@@ -170,22 +170,28 @@ class DrawingGame {
     }
 
     handleWebSocketMessage(message) {
+        console.log('Received WebSocket message:', message);
         switch (message.type) {
             case 'CANVAS_UPDATE':
+                console.log('Processing CANVAS_UPDATE message');
                 if (message.canvasData) {
                     this.loadCanvasFromData(message.canvasData);
                 }
                 break;
             case 'DRAWING_ACTION':
+                console.log('Processing DRAWING_ACTION message:', message.drawingAction);
                 this.renderDrawingAction(message.drawingAction);
                 break;
             case 'CLEAR_CANVAS':
+                console.log('Processing CLEAR_CANVAS message');
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 break;
             case 'PLAYER_LIST_UPDATE':
+                console.log('Processing PLAYER_LIST_UPDATE message');
                 this.updatePlayersList(message.playerName);
                 break;
             default:
+                console.log('Unknown message type or error:', message);
                 if (message.error) {
                     alert(message.error);
                 }
@@ -478,6 +484,13 @@ class DrawingGame {
     }
 
     sendDrawingAction(startX, startY, endX, endY, isStart, isEnd) {
+        console.log('Sending drawing action:', {
+            tool: this.currentTool,
+            color: this.currentColor,
+            size: this.currentSize,
+            startX, startY, endX, endY, isStart, isEnd
+        });
+        
         this.sendWebSocketMessage({
             type: 'DRAWING_ACTION',
             roomId: this.currentRoom,
