@@ -175,7 +175,13 @@ class DrawingGame {
             case 'CANVAS_UPDATE':
                 console.log('Processing CANVAS_UPDATE message');
                 if (message.canvasData) {
-                    this.loadCanvasFromData(message.canvasData);
+                    // Only load canvas data if current canvas is mostly empty
+                    if (this.isCanvasEmpty()) {
+                        console.log('Canvas is empty, loading received canvas data');
+                        this.loadCanvasFromData(message.canvasData);
+                    } else {
+                        console.log('Canvas has content, ignoring CANVAS_UPDATE to prevent overwriting');
+                    }
                 }
                 break;
             case 'DRAWING_ACTION':
@@ -370,6 +376,27 @@ class DrawingGame {
         img.src = canvasData;
     }
 
+    isCanvasEmpty() {
+        // Get image data and check if it's mostly empty
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        const pixels = imageData.data;
+        
+        // Count non-transparent pixels
+        let nonTransparentPixels = 0;
+        for (let i = 3; i < pixels.length; i += 4) {
+            if (pixels[i] > 0) { // Alpha channel
+                nonTransparentPixels++;
+            }
+        }
+        
+        // Consider canvas empty if less than 1% of pixels are drawn
+        const totalPixels = this.canvas.width * this.canvas.height;
+        const threshold = totalPixels * 0.01;
+        
+        console.log(`Canvas check: ${nonTransparentPixels} non-transparent pixels out of ${totalPixels} (threshold: ${threshold})`);
+        return nonTransparentPixels < threshold;
+    }
+
     selectTool(tool) {
         this.currentTool = tool;
         
@@ -424,13 +451,14 @@ class DrawingGame {
         if (this.isDrawing) {
             this.isDrawing = false;
             
-            // Send drawing end action and canvas update
+            // Send drawing end action
             this.sendDrawingAction(this.lastX, this.lastY, this.lastX, this.lastY, false, true);
             
-            // Send full canvas update
+            // Send canvas update to save the current state after a small delay
+            // This ensures the server has the latest canvas state for new players
             setTimeout(() => {
                 this.sendCanvasUpdate();
-            }, 100);
+            }, 200);
         }
     }
 

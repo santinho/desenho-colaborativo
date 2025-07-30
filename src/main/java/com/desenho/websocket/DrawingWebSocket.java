@@ -117,9 +117,11 @@ public class DrawingWebSocket {
         
         // Send current canvas data to the new player
         room = roomService.getRoom(roomId);
-        if (room != null && room.getCanvasData() != null) {
+        if (room != null && room.getCanvasData() != null && !room.getCanvasData().isEmpty()) {
             logger.info("Sending existing canvas data to new player");
             sendCanvasData(session, room.getCanvasData());
+        } else {
+            logger.info("No existing canvas data found for room " + roomId);
         }
         
         // Broadcast updated player list
