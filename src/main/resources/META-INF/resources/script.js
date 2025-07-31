@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130011 - Sistema de imagens flutuantes sobre o canvas
+ * Versão: 20250130012 - Correção posicionamento imagens e isolamento por sala
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -1152,16 +1152,27 @@ class DrawingGame {
         floatingImg.className = 'floating-image';
         floatingImg.src = imageMessage.imageData;
         
-        // Convert canvas coordinates to screen coordinates
+        // Store canvas coordinates in data attributes for repositioning
+        floatingImg.dataset.canvasX = imageMessage.imageX;
+        floatingImg.dataset.canvasY = imageMessage.imageY;
+        floatingImg.dataset.canvasWidth = imageMessage.imageWidth;
+        floatingImg.dataset.canvasHeight = imageMessage.imageHeight;
+        
+        // Get canvas position and scale for coordinate conversion
         const canvasRect = this.canvas.getBoundingClientRect();
+        const canvasOffsetX = canvasRect.left;
+        const canvasOffsetY = canvasRect.top;
         const canvasScale = this.canvas.width / canvasRect.width;
         
-        const screenX = imageMessage.imageX / canvasScale;
-        const screenY = imageMessage.imageY / canvasScale;
+        // Convert canvas coordinates to screen coordinates
+        // imageMessage coordinates are already in canvas pixels
+        const screenX = canvasOffsetX + (imageMessage.imageX / canvasScale);
+        const screenY = canvasOffsetY + (imageMessage.imageY / canvasScale);
         const screenWidth = imageMessage.imageWidth / canvasScale;
         const screenHeight = imageMessage.imageHeight / canvasScale;
         
-        // Position the floating image
+        // Position the floating image relative to the page (not canvas container)
+        floatingImg.style.position = 'fixed';
         floatingImg.style.left = screenX + 'px';
         floatingImg.style.top = screenY + 'px';
         floatingImg.style.width = screenWidth + 'px';
@@ -1170,7 +1181,9 @@ class DrawingGame {
         container.appendChild(floatingImg);
         
         console.log('Added floating image:', imageMessage.imageId, {
-            x: screenX, y: screenY, w: screenWidth, h: screenHeight
+            canvasCoords: { x: imageMessage.imageX, y: imageMessage.imageY, w: imageMessage.imageWidth, h: imageMessage.imageHeight },
+            screenCoords: { x: screenX, y: screenY, w: screenWidth, h: screenHeight },
+            canvasRect: { x: canvasOffsetX, y: canvasOffsetY, scale: canvasScale }
         });
     }
 
@@ -1187,11 +1200,52 @@ class DrawingGame {
         container.innerHTML = '';
         console.log('Cleared all floating images');
     }
+
+    repositionFloatingImages() {
+        const container = document.getElementById('floatingImages');
+        const images = container.querySelectorAll('.floating-image');
+        
+        if (images.length === 0) return;
+        
+        // Get current canvas position and scale
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const canvasOffsetX = canvasRect.left;
+        const canvasOffsetY = canvasRect.top;
+        const canvasScale = this.canvas.width / canvasRect.width;
+        
+        images.forEach(img => {
+            // Get stored canvas coordinates from data attributes
+            const canvasX = parseFloat(img.dataset.canvasX);
+            const canvasY = parseFloat(img.dataset.canvasY);
+            const canvasWidth = parseFloat(img.dataset.canvasWidth);
+            const canvasHeight = parseFloat(img.dataset.canvasHeight);
+            
+            if (!isNaN(canvasX) && !isNaN(canvasY)) {
+                // Recalculate screen position
+                const screenX = canvasOffsetX + (canvasX / canvasScale);
+                const screenY = canvasOffsetY + (canvasY / canvasScale);
+                const screenWidth = canvasWidth / canvasScale;
+                const screenHeight = canvasHeight / canvasScale;
+                
+                img.style.left = screenX + 'px';
+                img.style.top = screenY + 'px';
+                img.style.width = screenWidth + 'px';
+                img.style.height = screenHeight + 'px';
+            }
+        });
+    }
 }
 
 // Initialize the game when the page loads
 window.addEventListener('DOMContentLoaded', () => {
-    new DrawingGame();
+    window.game = new DrawingGame();
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    if (window.game) {
+        window.game.repositionFloatingImages();
+    }
 });
 
 // Handle page unload

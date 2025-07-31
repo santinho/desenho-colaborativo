@@ -261,8 +261,25 @@ public class DrawingWebSocket {
         String roomId = message.getRoomId();
         logger.info("Adding floating image to room: " + roomId + " imageId: " + message.getImageId());
         
-        // Broadcast to all users in the room
-        broadcastToRoom(roomId, message, sender);
+        // Verify sender is in the room
+        String senderRoom = sessionToRoom.get(sender);
+        if (!roomId.equals(senderRoom)) {
+            logger.warning("Session " + sender.getId() + " trying to add image to room " + roomId + " but is in room " + senderRoom);
+            sendErrorMessage(sender, "Você não está na sala especificada");
+            return;
+        }
+        
+        // Broadcast to all users in the room (including sender for confirmation)
+        Map<Session, String> sessions = roomSessions.get(roomId);
+        if (sessions != null) {
+            logger.info("Broadcasting floating image to " + sessions.size() + " sessions in room " + roomId);
+            sessions.keySet().forEach(s -> {
+                logger.info("Sending floating image to session " + s.getId() + " in room " + roomId);
+                sendMessage(s, message);
+            });
+        } else {
+            logger.warning("No sessions found for room " + roomId);
+        }
     }
     
     private void removeFloatingImage(DrawingMessage message, Session sender) {
