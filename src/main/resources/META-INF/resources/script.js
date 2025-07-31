@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130006 - Fix sincronização upload de imagem
+ * Versão: 20250130007 - Fix posicionamento e limites imagem overlay
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -30,6 +30,8 @@ class DrawingGame {
         this.isResizingImage = false;
         this.resizeHandle = null;
         this.dragOffset = { x: 0, y: 0 };
+        this.canvasScale = 1;
+        this.canvasOffset = { x: 0, y: 0 };
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -864,9 +866,13 @@ class DrawingGame {
         const overlay = document.getElementById('imageOverlay');
         const overlayImage = document.getElementById('overlayImage');
         
-        // Calculate initial size and position
+        // Get canvas position and dimensions
         const canvasRect = this.canvas.getBoundingClientRect();
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        
+        // Calculate canvas offset within the container
+        const canvasOffsetX = canvasRect.left - containerRect.left;
+        const canvasOffsetY = canvasRect.top - containerRect.top;
         
         // Scale image to fit within canvas while maintaining aspect ratio
         const maxWidth = this.canvas.width * 0.5;
@@ -886,17 +892,30 @@ class DrawingGame {
         }
         
         this.imageSize = { width: newWidth, height: newHeight };
+        
+        // Position relative to canvas center
+        const canvasScale = canvasRect.width / this.canvas.width;
         this.imagePosition = { 
             x: (this.canvas.width - newWidth) / 2, 
             y: (this.canvas.height - newHeight) / 2 
         };
         
-        // Set overlay image properties
+        // Convert canvas coordinates to screen coordinates for overlay
+        const screenX = canvasOffsetX + (this.imagePosition.x * canvasScale);
+        const screenY = canvasOffsetY + (this.imagePosition.y * canvasScale);
+        const screenWidth = newWidth * canvasScale;
+        const screenHeight = newHeight * canvasScale;
+        
+        // Set overlay image properties with screen coordinates
         overlayImage.src = img.src;
-        overlayImage.style.left = this.imagePosition.x + 'px';
-        overlayImage.style.top = this.imagePosition.y + 'px';
-        overlayImage.style.width = this.imageSize.width + 'px';
-        overlayImage.style.height = this.imageSize.height + 'px';
+        overlayImage.style.left = screenX + 'px';
+        overlayImage.style.top = screenY + 'px';
+        overlayImage.style.width = screenWidth + 'px';
+        overlayImage.style.height = screenHeight + 'px';
+        
+        // Store scale factor for later use
+        this.canvasScale = canvasScale;
+        this.canvasOffset = { x: canvasOffsetX, y: canvasOffsetY };
         
         // Show overlay
         overlay.classList.remove('hidden');
@@ -945,22 +964,29 @@ class DrawingGame {
     handleImageDrag(e) {
         if (!this.isDraggingImage) return;
         
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // Calculate mouse position relative to container
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        const mouseX = e.clientX - containerRect.left;
+        const mouseY = e.clientY - containerRect.top;
         
-        const newX = e.clientX - containerRect.left - this.dragOffset.x;
-        const newY = e.clientY - containerRect.top - this.dragOffset.y;
+        // Convert to canvas coordinates
+        const canvasX = (mouseX - this.canvasOffset.x - this.dragOffset.x) / this.canvasScale;
+        const canvasY = (mouseY - this.canvasOffset.y - this.dragOffset.y) / this.canvasScale;
         
         // Keep image within canvas bounds
         const maxX = this.canvas.width - this.imageSize.width;
         const maxY = this.canvas.height - this.imageSize.height;
         
-        this.imagePosition.x = Math.max(0, Math.min(maxX, newX));
-        this.imagePosition.y = Math.max(0, Math.min(maxY, newY));
+        this.imagePosition.x = Math.max(0, Math.min(maxX, canvasX));
+        this.imagePosition.y = Math.max(0, Math.min(maxY, canvasY));
+        
+        // Convert back to screen coordinates for overlay display
+        const screenX = this.canvasOffset.x + (this.imagePosition.x * this.canvasScale);
+        const screenY = this.canvasOffset.y + (this.imagePosition.y * this.canvasScale);
         
         const overlayImage = document.getElementById('overlayImage');
-        overlayImage.style.left = this.imagePosition.x + 'px';
-        overlayImage.style.top = this.imagePosition.y + 'px';
+        overlayImage.style.left = screenX + 'px';
+        overlayImage.style.top = screenY + 'px';
     }
 
     handleImageDragEnd() {
@@ -972,9 +998,10 @@ class DrawingGame {
     handleImageResize(e) {
         if (!this.isResizingImage) return;
         
-        const overlayImage = document.getElementById('overlayImage');
-        const rect = overlayImage.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // Convert mouse position to canvas coordinates
+        const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        const mouseCanvasX = (e.clientX - containerRect.left - this.canvasOffset.x) / this.canvasScale;
+        const mouseCanvasY = (e.clientY - containerRect.top - this.canvasOffset.y) / this.canvasScale;
         
         let newWidth = this.imageSize.width;
         let newHeight = this.imageSize.height;
@@ -983,24 +1010,24 @@ class DrawingGame {
         
         switch (this.resizeHandle) {
             case 'se': // Southeast
-                newWidth = e.clientX - canvasRect.left - this.imagePosition.x;
-                newHeight = e.clientY - canvasRect.top - this.imagePosition.y;
+                newWidth = mouseCanvasX - this.imagePosition.x;
+                newHeight = mouseCanvasY - this.imagePosition.y;
                 break;
             case 'sw': // Southwest
-                newWidth = this.imagePosition.x + this.imageSize.width - (e.clientX - canvasRect.left);
-                newHeight = e.clientY - canvasRect.top - this.imagePosition.y;
-                newX = e.clientX - canvasRect.left;
+                newWidth = this.imagePosition.x + this.imageSize.width - mouseCanvasX;
+                newHeight = mouseCanvasY - this.imagePosition.y;
+                newX = mouseCanvasX;
                 break;
             case 'ne': // Northeast
-                newWidth = e.clientX - canvasRect.left - this.imagePosition.x;
-                newHeight = this.imagePosition.y + this.imageSize.height - (e.clientY - canvasRect.top);
-                newY = e.clientY - canvasRect.top;
+                newWidth = mouseCanvasX - this.imagePosition.x;
+                newHeight = this.imagePosition.y + this.imageSize.height - mouseCanvasY;
+                newY = mouseCanvasY;
                 break;
             case 'nw': // Northwest
-                newWidth = this.imagePosition.x + this.imageSize.width - (e.clientX - canvasRect.left);
-                newHeight = this.imagePosition.y + this.imageSize.height - (e.clientY - canvasRect.top);
-                newX = e.clientX - canvasRect.left;
-                newY = e.clientY - canvasRect.top;
+                newWidth = this.imagePosition.x + this.imageSize.width - mouseCanvasX;
+                newHeight = this.imagePosition.y + this.imageSize.height - mouseCanvasY;
+                newX = mouseCanvasX;
+                newY = mouseCanvasY;
                 break;
         }
         
@@ -1020,13 +1047,21 @@ class DrawingGame {
         newWidth = Math.min(this.canvas.width - newX, newWidth);
         newHeight = Math.min(this.canvas.height - newY, newHeight);
         
+        // Update properties
         this.imageSize = { width: newWidth, height: newHeight };
         this.imagePosition = { x: newX, y: newY };
         
-        overlayImage.style.left = newX + 'px';
-        overlayImage.style.top = newY + 'px';
-        overlayImage.style.width = newWidth + 'px';
-        overlayImage.style.height = newHeight + 'px';
+        // Convert to screen coordinates for display
+        const screenX = this.canvasOffset.x + (newX * this.canvasScale);
+        const screenY = this.canvasOffset.y + (newY * this.canvasScale);
+        const screenWidth = newWidth * this.canvasScale;
+        const screenHeight = newHeight * this.canvasScale;
+        
+        const overlayImage = document.getElementById('overlayImage');
+        overlayImage.style.left = screenX + 'px';
+        overlayImage.style.top = screenY + 'px';
+        overlayImage.style.width = screenWidth + 'px';
+        overlayImage.style.height = screenHeight + 'px';
     }
 
     handleImageResizeEnd() {
