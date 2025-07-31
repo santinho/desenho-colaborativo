@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130007 - Fix posicionamento e limites imagem overlay
+ * Versão: 20250130008 - Sistema de camadas para imagens (por cima/por baixo)
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -1074,17 +1074,64 @@ class DrawingGame {
     confirmImage() {
         if (!this.currentImage) return;
         
-        // Draw image on canvas
-        this.ctx.drawImage(
-            this.currentImage,
-            this.imagePosition.x,
-            this.imagePosition.y,
-            this.imageSize.width,
-            this.imageSize.height
-        );
+        // Get selected layer option
+        const layerOption = document.querySelector('input[name="imageLayer"]:checked').value;
         
-        // Send forced canvas update to all players (bypass empty canvas check)
-        if (this.canvas) {
+        if (layerOption === 'bottom') {
+            // Draw image BEHIND existing content
+            // Save current canvas content
+            const currentCanvasData = this.canvas.toDataURL();
+            
+            // Clear canvas
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Draw image first (background layer)
+            this.ctx.globalCompositeOperation = 'source-over';
+            this.ctx.drawImage(
+                this.currentImage,
+                this.imagePosition.x,
+                this.imagePosition.y,
+                this.imageSize.width,
+                this.imageSize.height
+            );
+            
+            // Load and draw existing content on top
+            const img = new Image();
+            img.onload = () => {
+                this.ctx.drawImage(img, 0, 0);
+                
+                // Send update after both layers are drawn
+                this.sendWebSocketMessage({
+                    type: 'FORCE_CANVAS_UPDATE',
+                    roomId: this.currentRoom,
+                    canvasData: this.canvas.toDataURL()
+                });
+            };
+            img.src = currentCanvasData;
+            
+        } else {
+            // Draw image ON TOP of existing content (default behavior)
+            // Save current composite operation
+            const currentCompositeOperation = this.ctx.globalCompositeOperation;
+            
+            // Set composite operation to draw image on top of existing content
+            // This allows transparent images to overlay drawings while preserving transparency
+            this.ctx.globalCompositeOperation = 'source-over';
+            
+            // Draw image on canvas - this will appear on top of existing drawings
+            // Perfect for coloring book pages or overlay templates
+            this.ctx.drawImage(
+                this.currentImage,
+                this.imagePosition.x,
+                this.imagePosition.y,
+                this.imageSize.width,
+                this.imageSize.height
+            );
+            
+            // Restore previous composite operation
+            this.ctx.globalCompositeOperation = currentCompositeOperation;
+            
+            // Send forced canvas update to all players (bypass empty canvas check)
             this.sendWebSocketMessage({
                 type: 'FORCE_CANVAS_UPDATE',
                 roomId: this.currentRoom,
