@@ -77,6 +77,9 @@ public class DrawingWebSocket {
             case CANVAS_UPDATE:
                 updateCanvas(message.getRoomId(), message.getCanvasData(), session);
                 break;
+            case FORCE_CANVAS_UPDATE:
+                forceUpdateCanvas(message.getRoomId(), message.getCanvasData(), session);
+                break;
             case DRAWING_ACTION:
                 broadcastDrawingAction(message, session);
                 break;
@@ -167,6 +170,26 @@ public class DrawingWebSocket {
                 }
             });
         }
+    }
+    
+    private void forceUpdateCanvas(String roomId, String canvasData, Session session) {
+        roomService.updateRoomCanvas(roomId, canvasData);
+        
+        // Broadcast FORCE canvas update to all other players in the room (for image uploads)
+        Map<Session, String> sessions = roomSessions.get(roomId);
+        if (sessions != null) {
+            DrawingMessage message = new DrawingMessage();
+            message.setType(DrawingMessage.MessageType.FORCE_CANVAS_UPDATE);
+            message.setRoomId(roomId);
+            message.setCanvasData(canvasData);
+            
+            sessions.keySet().forEach(s -> {
+                if (!s.equals(session)) {
+                    sendMessage(s, message);
+                }
+            });
+        }
+        logger.info("Force canvas update broadcasted to " + (sessions != null ? sessions.size() - 1 : 0) + " other players in room " + roomId);
     }
     
     private void broadcastDrawingAction(DrawingMessage message, Session session) {

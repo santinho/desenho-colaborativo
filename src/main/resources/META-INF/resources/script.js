@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130005 - Upload de imagem com posicionamento e redimensionamento
+ * Versão: 20250130006 - Fix sincronização upload de imagem
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -325,6 +325,12 @@ class DrawingGame {
                     if (this.isCanvasEmpty()) {
                         this.loadCanvasFromData(message.canvasData);
                     }
+                }
+                break;
+            case 'FORCE_CANVAS_UPDATE':
+                if (message.canvasData) {
+                    // Always load canvas data (used for image uploads)
+                    this.loadCanvasFromData(message.canvasData);
                 }
                 break;
             case 'DRAWING_ACTION':
@@ -1042,8 +1048,14 @@ class DrawingGame {
             this.imageSize.height
         );
         
-        // Send canvas update to all players
-        this.sendCanvasUpdate();
+        // Send forced canvas update to all players (bypass empty canvas check)
+        if (this.canvas) {
+            this.sendWebSocketMessage({
+                type: 'FORCE_CANVAS_UPDATE',
+                roomId: this.currentRoom,
+                canvasData: this.canvas.toDataURL()
+            });
+        }
         
         // Clean up
         this.hideImageOverlay();

@@ -23,6 +23,7 @@ public class DrawingMessage {
         JOIN_ROOM,
         LEAVE_ROOM,
         CANVAS_UPDATE,
+        FORCE_CANVAS_UPDATE,
         DRAWING_ACTION,
         CLEAR_CANVAS,
         PLAYER_LIST_UPDATE
