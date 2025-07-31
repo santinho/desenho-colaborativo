@@ -329,7 +329,7 @@ class DrawingGame {
             default:
                 if (message.error) {
                     console.error('WebSocket error:', message.error);
-                    alert(message.error);
+                    //alert(message.error);
                 }
         }
     }
