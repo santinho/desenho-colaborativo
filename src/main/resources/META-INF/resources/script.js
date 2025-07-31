@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130003 - Fix funcionalidades quebradas (cor, tamanho, ferramentas)
+ * Versão: 20250130004 - Fix funcionalidades quebradas (cor, tamanho, ferramentas)
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
