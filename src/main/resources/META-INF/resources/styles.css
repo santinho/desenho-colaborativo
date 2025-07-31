@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Estilos CSS
- * Versão: 20250130012 - Correção posicionamento imagens e isolamento por sala
+ * Versão: 20250130013 - Fix z-index imagens e correção upload duplicado
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -310,6 +310,8 @@ body {
     border-radius: 10px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     cursor: crosshair;
+    position: relative;
+    z-index: 10;
 }
 
 /* Floating Images Container */
@@ -320,14 +322,14 @@ body {
     width: 100vw;
     height: 100vh;
     pointer-events: none;
-    z-index: 50;
+    z-index: 100;
 }
 
 .floating-image {
     position: fixed;
     pointer-events: none;
     user-select: none;
-    z-index: 51;
+    z-index: 101;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -340,7 +342,7 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 100;
+    z-index: 200;
 }
 
 .image-overlay.active {
@@ -356,6 +358,7 @@ body {
     max-width: 90%;
     max-height: 90%;
     user-select: none;
+    z-index: 201;
 }
 
 .image-controls {
@@ -364,7 +367,7 @@ body {
     right: 10px;
     display: flex;
     gap: 0.5rem;
-    z-index: 101;
+    z-index: 202;
 }
 
 .control-btn {
@@ -420,7 +423,7 @@ body {
     border-radius: 50%;
     pointer-events: all;
     cursor: pointer;
-    z-index: 102;
+    z-index: 203;
 }
 
 .resize-handle.nw {

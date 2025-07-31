@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130012 - Correção posicionamento imagens e isolamento por sala
+ * Versão: 20250130013 - Fix z-index imagens e correção upload duplicado
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -1253,9 +1253,4 @@ window.addEventListener('beforeunload', () => {
     if (window.game && window.game.websocket) {
         window.game.websocket.close();
     }
-});
-
-// Store game instance globally for debugging
-window.addEventListener('DOMContentLoaded', () => {
-    window.game = new DrawingGame();
 });
