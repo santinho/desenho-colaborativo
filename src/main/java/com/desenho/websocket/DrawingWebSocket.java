@@ -86,6 +86,12 @@ public class DrawingWebSocket {
             case CLEAR_CANVAS:
                 clearCanvas(message.getRoomId(), session);
                 break;
+            case FLOATING_IMAGE_ADD:
+                addFloatingImage(message, session);
+                break;
+            case FLOATING_IMAGE_REMOVE:
+                removeFloatingImage(message, session);
+                break;
             default:
                 logger.warning("Unknown message type: " + message.getType() + " from session: " + session.getId());
                 sendErrorMessage(session, "Unknown message type");
@@ -248,6 +254,33 @@ public class DrawingWebSocket {
             }
         } catch (Exception e) {
             logger.severe("Error sending message to session " + session.getId() + ": " + e.getMessage());
+        }
+    }
+    
+    private void addFloatingImage(DrawingMessage message, Session sender) {
+        String roomId = message.getRoomId();
+        logger.info("Adding floating image to room: " + roomId + " imageId: " + message.getImageId());
+        
+        // Broadcast to all users in the room
+        broadcastToRoom(roomId, message, sender);
+    }
+    
+    private void removeFloatingImage(DrawingMessage message, Session sender) {
+        String roomId = message.getRoomId();
+        logger.info("Removing floating image from room: " + roomId + " imageId: " + message.getImageId());
+        
+        // Broadcast to all users in the room
+        broadcastToRoom(roomId, message, sender);
+    }
+    
+    private void broadcastToRoom(String roomId, DrawingMessage message, Session sender) {
+        Map<Session, String> sessions = roomSessions.get(roomId);
+        if (sessions != null) {
+            sessions.keySet().forEach(s -> {
+                if (!s.equals(sender)) {
+                    sendMessage(s, message);
+                }
+            });
         }
     }
     

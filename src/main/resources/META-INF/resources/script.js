@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130010 - Imagens sempre por baixo dos desenhos
+ * Versão: 20250130011 - Sistema de imagens flutuantes sobre o canvas
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -340,6 +340,13 @@ class DrawingGame {
                 break;
             case 'CLEAR_CANVAS':
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.clearFloatingImages();
+                break;
+            case 'FLOATING_IMAGE_ADD':
+                this.addFloatingImageLocal(message);
+                break;
+            case 'FLOATING_IMAGE_REMOVE':
+                this.removeFloatingImageLocal(message.imageId);
                 break;
             case 'PLAYER_LIST_UPDATE':
                 console.log('Received player list update:', message.playerName);
@@ -1074,36 +1081,34 @@ class DrawingGame {
     confirmImage() {
         if (!this.currentImage) return;
         
-        // Always draw image BEHIND existing content (drawings on top)
-        // Save current canvas content
-        const currentCanvasData = this.canvas.toDataURL();
+        // Generate unique ID for the image
+        const imageId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Convert image to base64 data URL
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = this.currentImage.naturalWidth;
+        canvas.height = this.currentImage.naturalHeight;
+        ctx.drawImage(this.currentImage, 0, 0);
+        const imageData = canvas.toDataURL('image/png');
         
-        // Draw image first (background layer)
-        this.ctx.globalCompositeOperation = 'source-over';
-        this.ctx.drawImage(
-            this.currentImage,
-            this.imagePosition.x,
-            this.imagePosition.y,
-            this.imageSize.width,
-            this.imageSize.height
-        );
-        
-        // Load and draw existing content on top
-        const img = new Image();
-        img.onload = () => {
-            this.ctx.drawImage(img, 0, 0);
-            
-            // Send update after both layers are drawn
-            this.sendWebSocketMessage({
-                type: 'FORCE_CANVAS_UPDATE',
-                roomId: this.currentRoom,
-                canvasData: this.canvas.toDataURL()
-            });
+        // Create floating image message
+        const imageMessage = {
+            type: 'FLOATING_IMAGE_ADD',
+            roomId: this.currentRoom,
+            imageId: imageId,
+            imageData: imageData,
+            imageX: this.imagePosition.x,
+            imageY: this.imagePosition.y,
+            imageWidth: this.imageSize.width,
+            imageHeight: this.imageSize.height
         };
-        img.src = currentCanvasData;
+        
+        // Send to all players
+        this.sendWebSocketMessage(imageMessage);
+        
+        // Add to local display
+        this.addFloatingImageLocal(imageMessage);
         
         // Clean up
         this.hideImageOverlay();
@@ -1136,6 +1141,51 @@ class DrawingGame {
         resizeHandles.forEach(handle => {
             handle.replaceWith(handle.cloneNode(true));
         });
+    }
+
+    addFloatingImageLocal(imageMessage) {
+        const container = document.getElementById('floatingImages');
+        
+        // Create floating image element
+        const floatingImg = document.createElement('img');
+        floatingImg.id = imageMessage.imageId;
+        floatingImg.className = 'floating-image';
+        floatingImg.src = imageMessage.imageData;
+        
+        // Convert canvas coordinates to screen coordinates
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const canvasScale = this.canvas.width / canvasRect.width;
+        
+        const screenX = imageMessage.imageX / canvasScale;
+        const screenY = imageMessage.imageY / canvasScale;
+        const screenWidth = imageMessage.imageWidth / canvasScale;
+        const screenHeight = imageMessage.imageHeight / canvasScale;
+        
+        // Position the floating image
+        floatingImg.style.left = screenX + 'px';
+        floatingImg.style.top = screenY + 'px';
+        floatingImg.style.width = screenWidth + 'px';
+        floatingImg.style.height = screenHeight + 'px';
+        
+        container.appendChild(floatingImg);
+        
+        console.log('Added floating image:', imageMessage.imageId, {
+            x: screenX, y: screenY, w: screenWidth, h: screenHeight
+        });
+    }
+
+    removeFloatingImageLocal(imageId) {
+        const floatingImg = document.getElementById(imageId);
+        if (floatingImg) {
+            floatingImg.remove();
+            console.log('Removed floating image:', imageId);
+        }
+    }
+
+    clearFloatingImages() {
+        const container = document.getElementById('floatingImages');
+        container.innerHTML = '';
+        console.log('Cleared all floating images');
     }
 }
 

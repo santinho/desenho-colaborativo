@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Estilos CSS
- * Versão: 20250130010 - Imagens sempre por baixo dos desenhos
+ * Versão: 20250130011 - Sistema de imagens flutuantes sobre o canvas
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -310,6 +310,26 @@ body {
     border-radius: 10px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     cursor: crosshair;
+}
+
+/* Floating Images Container */
+.floating-images-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.floating-image {
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+    z-index: 51;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Image Upload Overlay */

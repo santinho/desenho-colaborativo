@@ -19,6 +19,24 @@ public class DrawingMessage {
     @JsonProperty("drawingAction")
     private DrawingAction drawingAction;
     
+    @JsonProperty("imageData")
+    private String imageData;
+    
+    @JsonProperty("imageId")
+    private String imageId;
+    
+    @JsonProperty("imageX")
+    private Double imageX;
+    
+    @JsonProperty("imageY")
+    private Double imageY;
+    
+    @JsonProperty("imageWidth")
+    private Double imageWidth;
+    
+    @JsonProperty("imageHeight")
+    private Double imageHeight;
+    
     public enum MessageType {
         JOIN_ROOM,
         LEAVE_ROOM,
@@ -26,7 +44,9 @@ public class DrawingMessage {
         FORCE_CANVAS_UPDATE,
         DRAWING_ACTION,
         CLEAR_CANVAS,
-        PLAYER_LIST_UPDATE
+        PLAYER_LIST_UPDATE,
+        FLOATING_IMAGE_ADD,
+        FLOATING_IMAGE_REMOVE
     }
     
     public static class DrawingAction {
@@ -101,4 +121,22 @@ public class DrawingMessage {
     
     public DrawingAction getDrawingAction() { return drawingAction; }
     public void setDrawingAction(DrawingAction drawingAction) { this.drawingAction = drawingAction; }
+    
+    public String getImageData() { return imageData; }
+    public void setImageData(String imageData) { this.imageData = imageData; }
+    
+    public String getImageId() { return imageId; }
+    public void setImageId(String imageId) { this.imageId = imageId; }
+    
+    public Double getImageX() { return imageX; }
+    public void setImageX(Double imageX) { this.imageX = imageX; }
+    
+    public Double getImageY() { return imageY; }
+    public void setImageY(Double imageY) { this.imageY = imageY; }
+    
+    public Double getImageWidth() { return imageWidth; }
+    public void setImageWidth(Double imageWidth) { this.imageWidth = imageWidth; }
+    
+    public Double getImageHeight() { return imageHeight; }
+    public void setImageHeight(Double imageHeight) { this.imageHeight = imageHeight; }
 }
