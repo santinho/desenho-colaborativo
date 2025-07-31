@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130004 - Fix funcionalidades quebradas (cor, tamanho, ferramentas)
+ * Versão: 20250130005 - Upload de imagem com posicionamento e redimensionamento
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -20,6 +20,16 @@ class DrawingGame {
         this.reconnectInterval = null;
         this.isConnected = false;
         this.hasJoinedRoom = false;
+        
+        // Image upload properties
+        this.isImageMode = false;
+        this.currentImage = null;
+        this.imagePosition = { x: 0, y: 0 };
+        this.imageSize = { width: 0, height: 0 };
+        this.isDraggingImage = false;
+        this.isResizingImage = false;
+        this.resizeHandle = null;
+        this.dragOffset = { x: 0, y: 0 };
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -43,6 +53,14 @@ class DrawingGame {
         document.getElementById('brushTool').addEventListener('click', () => this.selectTool('brush'));
         document.getElementById('eraserTool').addEventListener('click', () => this.selectTool('eraser'));
         document.getElementById('sprayTool').addEventListener('click', () => this.selectTool('spray'));
+        
+        // Image upload
+        document.getElementById('uploadImageBtn').addEventListener('click', () => {
+            document.getElementById('imageUpload').click();
+        });
+        document.getElementById('imageUpload').addEventListener('change', (e) => this.handleImageUpload(e));
+        document.getElementById('confirmImage').addEventListener('click', () => this.confirmImage());
+        document.getElementById('cancelImage').addEventListener('click', () => this.cancelImage());
         
         // Size control
         document.getElementById('brushSize').addEventListener('input', (e) => {
@@ -811,6 +829,253 @@ class DrawingGame {
                 roomId: this.currentRoom
             });
         }
+    }
+
+    // Image upload methods
+    handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione apenas arquivos de imagem!');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                this.currentImage = img;
+                this.showImageOverlay(img);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    showImageOverlay(img) {
+        this.isImageMode = true;
+        const overlay = document.getElementById('imageOverlay');
+        const overlayImage = document.getElementById('overlayImage');
+        
+        // Calculate initial size and position
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        
+        // Scale image to fit within canvas while maintaining aspect ratio
+        const maxWidth = this.canvas.width * 0.5;
+        const maxHeight = this.canvas.height * 0.5;
+        
+        let newWidth = img.naturalWidth;
+        let newHeight = img.naturalHeight;
+        
+        if (newWidth > maxWidth) {
+            newHeight = (newHeight * maxWidth) / newWidth;
+            newWidth = maxWidth;
+        }
+        
+        if (newHeight > maxHeight) {
+            newWidth = (newWidth * maxHeight) / newHeight;
+            newHeight = maxHeight;
+        }
+        
+        this.imageSize = { width: newWidth, height: newHeight };
+        this.imagePosition = { 
+            x: (this.canvas.width - newWidth) / 2, 
+            y: (this.canvas.height - newHeight) / 2 
+        };
+        
+        // Set overlay image properties
+        overlayImage.src = img.src;
+        overlayImage.style.left = this.imagePosition.x + 'px';
+        overlayImage.style.top = this.imagePosition.y + 'px';
+        overlayImage.style.width = this.imageSize.width + 'px';
+        overlayImage.style.height = this.imageSize.height + 'px';
+        
+        // Show overlay
+        overlay.classList.remove('hidden');
+        overlay.classList.add('active');
+        
+        // Disable drawing
+        this.canvas.style.pointerEvents = 'none';
+        
+        this.setupImageInteraction();
+    }
+
+    setupImageInteraction() {
+        const overlayImage = document.getElementById('overlayImage');
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+        
+        // Image dragging
+        overlayImage.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('resize-handle')) return;
+            
+            this.isDraggingImage = true;
+            const rect = overlayImage.getBoundingClientRect();
+            this.dragOffset = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+            
+            document.addEventListener('mousemove', this.handleImageDrag.bind(this));
+            document.addEventListener('mouseup', this.handleImageDragEnd.bind(this));
+            e.preventDefault();
+        });
+        
+        // Resize handles
+        resizeHandles.forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                this.isResizingImage = true;
+                this.resizeHandle = handle.classList[1]; // nw, ne, sw, se
+                
+                document.addEventListener('mousemove', this.handleImageResize.bind(this));
+                document.addEventListener('mouseup', this.handleImageResizeEnd.bind(this));
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+    }
+
+    handleImageDrag(e) {
+        if (!this.isDraggingImage) return;
+        
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        
+        const newX = e.clientX - containerRect.left - this.dragOffset.x;
+        const newY = e.clientY - containerRect.top - this.dragOffset.y;
+        
+        // Keep image within canvas bounds
+        const maxX = this.canvas.width - this.imageSize.width;
+        const maxY = this.canvas.height - this.imageSize.height;
+        
+        this.imagePosition.x = Math.max(0, Math.min(maxX, newX));
+        this.imagePosition.y = Math.max(0, Math.min(maxY, newY));
+        
+        const overlayImage = document.getElementById('overlayImage');
+        overlayImage.style.left = this.imagePosition.x + 'px';
+        overlayImage.style.top = this.imagePosition.y + 'px';
+    }
+
+    handleImageDragEnd() {
+        this.isDraggingImage = false;
+        document.removeEventListener('mousemove', this.handleImageDrag.bind(this));
+        document.removeEventListener('mouseup', this.handleImageDragEnd.bind(this));
+    }
+
+    handleImageResize(e) {
+        if (!this.isResizingImage) return;
+        
+        const overlayImage = document.getElementById('overlayImage');
+        const rect = overlayImage.getBoundingClientRect();
+        const canvasRect = this.canvas.getBoundingClientRect();
+        
+        let newWidth = this.imageSize.width;
+        let newHeight = this.imageSize.height;
+        let newX = this.imagePosition.x;
+        let newY = this.imagePosition.y;
+        
+        switch (this.resizeHandle) {
+            case 'se': // Southeast
+                newWidth = e.clientX - canvasRect.left - this.imagePosition.x;
+                newHeight = e.clientY - canvasRect.top - this.imagePosition.y;
+                break;
+            case 'sw': // Southwest
+                newWidth = this.imagePosition.x + this.imageSize.width - (e.clientX - canvasRect.left);
+                newHeight = e.clientY - canvasRect.top - this.imagePosition.y;
+                newX = e.clientX - canvasRect.left;
+                break;
+            case 'ne': // Northeast
+                newWidth = e.clientX - canvasRect.left - this.imagePosition.x;
+                newHeight = this.imagePosition.y + this.imageSize.height - (e.clientY - canvasRect.top);
+                newY = e.clientY - canvasRect.top;
+                break;
+            case 'nw': // Northwest
+                newWidth = this.imagePosition.x + this.imageSize.width - (e.clientX - canvasRect.left);
+                newHeight = this.imagePosition.y + this.imageSize.height - (e.clientY - canvasRect.top);
+                newX = e.clientX - canvasRect.left;
+                newY = e.clientY - canvasRect.top;
+                break;
+        }
+        
+        // Maintain aspect ratio
+        const aspectRatio = this.currentImage.naturalWidth / this.currentImage.naturalHeight;
+        if (newWidth / newHeight > aspectRatio) {
+            newWidth = newHeight * aspectRatio;
+        } else {
+            newHeight = newWidth / aspectRatio;
+        }
+        
+        // Minimum size constraints
+        newWidth = Math.max(50, newWidth);
+        newHeight = Math.max(50, newHeight);
+        
+        // Maximum size constraints (canvas bounds)
+        newWidth = Math.min(this.canvas.width - newX, newWidth);
+        newHeight = Math.min(this.canvas.height - newY, newHeight);
+        
+        this.imageSize = { width: newWidth, height: newHeight };
+        this.imagePosition = { x: newX, y: newY };
+        
+        overlayImage.style.left = newX + 'px';
+        overlayImage.style.top = newY + 'px';
+        overlayImage.style.width = newWidth + 'px';
+        overlayImage.style.height = newHeight + 'px';
+    }
+
+    handleImageResizeEnd() {
+        this.isResizingImage = false;
+        this.resizeHandle = null;
+        document.removeEventListener('mousemove', this.handleImageResize.bind(this));
+        document.removeEventListener('mouseup', this.handleImageResizeEnd.bind(this));
+    }
+
+    confirmImage() {
+        if (!this.currentImage) return;
+        
+        // Draw image on canvas
+        this.ctx.drawImage(
+            this.currentImage,
+            this.imagePosition.x,
+            this.imagePosition.y,
+            this.imageSize.width,
+            this.imageSize.height
+        );
+        
+        // Send canvas update to all players
+        this.sendCanvasUpdate();
+        
+        // Clean up
+        this.hideImageOverlay();
+        
+        // Clear file input
+        document.getElementById('imageUpload').value = '';
+    }
+
+    cancelImage() {
+        this.hideImageOverlay();
+        document.getElementById('imageUpload').value = '';
+    }
+
+    hideImageOverlay() {
+        this.isImageMode = false;
+        this.currentImage = null;
+        
+        const overlay = document.getElementById('imageOverlay');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('active');
+        
+        // Re-enable drawing
+        this.canvas.style.pointerEvents = 'auto';
+        
+        // Clean up event listeners
+        const overlayImage = document.getElementById('overlayImage');
+        overlayImage.replaceWith(overlayImage.cloneNode(true));
+        
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+        resizeHandles.forEach(handle => {
+            handle.replaceWith(handle.cloneNode(true));
+        });
     }
 }
 

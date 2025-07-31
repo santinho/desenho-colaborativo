@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Estilos CSS
- * Versão: 20250130004 - Fix funcionalidades quebradas
+ * Versão: 20250130005 - Upload de imagem com posicionamento e redimensionamento
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -302,6 +302,7 @@ body {
     align-items: center;
     padding: 1rem;
     background: #f0f2f5;
+    position: relative;
 }
 
 #drawingCanvas {
@@ -309,6 +310,121 @@ body {
     border-radius: 10px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
     cursor: crosshair;
+}
+
+/* Image Upload Overlay */
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.image-overlay.active {
+    pointer-events: all;
+}
+
+.overlay-image {
+    position: absolute;
+    border: 2px dashed #667eea;
+    cursor: move;
+    min-width: 50px;
+    min-height: 50px;
+    max-width: 90%;
+    max-height: 90%;
+    user-select: none;
+}
+
+.image-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 101;
+}
+
+.control-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s;
+}
+
+.control-btn.confirm {
+    background: #27ae60;
+    color: white;
+}
+
+.control-btn.confirm:hover {
+    background: #2ecc71;
+    transform: scale(1.1);
+}
+
+.control-btn.cancel {
+    background: #e74c3c;
+    color: white;
+}
+
+.control-btn.cancel:hover {
+    background: #c0392b;
+    transform: scale(1.1);
+}
+
+.resize-handles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #667eea;
+    border: 2px solid white;
+    border-radius: 50%;
+    pointer-events: all;
+    cursor: pointer;
+    z-index: 102;
+}
+
+.resize-handle.nw {
+    top: -6px;
+    left: -6px;
+    cursor: nw-resize;
+}
+
+.resize-handle.ne {
+    top: -6px;
+    right: -6px;
+    cursor: ne-resize;
+}
+
+.resize-handle.sw {
+    bottom: -6px;
+    left: -6px;
+    cursor: sw-resize;
+}
+
+.resize-handle.se {
+    bottom: -6px;
+    right: -6px;
+    cursor: se-resize;
 }
 
 /* Responsive */
