@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130013 - Fix z-index imagens e correção upload duplicado
+ * Versão: 20250130015 - Correção dos resize handles para ficarem ao redor da imagem
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -871,6 +871,7 @@ class DrawingGame {
     showImageOverlay(img) {
         this.isImageMode = true;
         const overlay = document.getElementById('imageOverlay');
+        const imageContainer = overlay.querySelector('.image-container');
         const overlayImage = document.getElementById('overlayImage');
         
         // Get canvas position and dimensions
@@ -915,10 +916,12 @@ class DrawingGame {
         
         // Set overlay image properties with screen coordinates
         overlayImage.src = img.src;
-        overlayImage.style.left = screenX + 'px';
-        overlayImage.style.top = screenY + 'px';
         overlayImage.style.width = screenWidth + 'px';
         overlayImage.style.height = screenHeight + 'px';
+        
+        // Position the container instead of the image
+        imageContainer.style.left = screenX + 'px';
+        imageContainer.style.top = screenY + 'px';
         
         // Store scale factor for later use
         this.canvasScale = canvasScale;
@@ -935,46 +938,95 @@ class DrawingGame {
     }
 
     setupImageInteraction() {
+        const overlay = document.getElementById('imageOverlay');
+        const imageContainer = overlay.querySelector('.image-container');
         const overlayImage = document.getElementById('overlayImage');
         const resizeHandles = document.querySelectorAll('.resize-handle');
         
-        // Image dragging
+        // Helper function to get event coordinates (mouse or touch)
+        const getEventCoords = (e) => {
+            if (e.touches && e.touches.length > 0) {
+                return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+            }
+            return { clientX: e.clientX, clientY: e.clientY };
+        };
+        
+        // Image dragging - Mouse events (on the image itself)
         overlayImage.addEventListener('mousedown', (e) => {
             if (e.target.classList.contains('resize-handle')) return;
-            
-            this.isDraggingImage = true;
-            const rect = overlayImage.getBoundingClientRect();
-            this.dragOffset = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-            
-            document.addEventListener('mousemove', this.handleImageDrag.bind(this));
-            document.addEventListener('mouseup', this.handleImageDragEnd.bind(this));
-            e.preventDefault();
+            this.startImageDrag(e);
         });
         
-        // Resize handles
+        // Image dragging - Touch events (on the image itself)
+        overlayImage.addEventListener('touchstart', (e) => {
+            if (e.target.classList.contains('resize-handle')) return;
+            e.preventDefault(); // Prevent scrolling
+            this.startImageDrag(e);
+        });
+        
+        // Resize handles - Mouse and Touch events
         resizeHandles.forEach(handle => {
+            // Mouse events
             handle.addEventListener('mousedown', (e) => {
-                this.isResizingImage = true;
-                this.resizeHandle = handle.classList[1]; // nw, ne, sw, se
-                
-                document.addEventListener('mousemove', this.handleImageResize.bind(this));
-                document.addEventListener('mouseup', this.handleImageResizeEnd.bind(this));
-                e.preventDefault();
-                e.stopPropagation();
+                this.startImageResize(e, handle);
+            });
+            
+            // Touch events
+            handle.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent scrolling
+                this.startImageResize(e, handle);
             });
         });
+    }
+    
+    startImageDrag(e) {
+        const coords = this.getEventCoords(e);
+        this.isDraggingImage = true;
+        const overlay = document.getElementById('imageOverlay');
+        const imageContainer = overlay.querySelector('.image-container');
+        const rect = imageContainer.getBoundingClientRect();
+        this.dragOffset = {
+            x: coords.clientX - rect.left,
+            y: coords.clientY - rect.top
+        };
+        
+        // Add both mouse and touch event listeners
+        document.addEventListener('mousemove', this.handleImageDrag.bind(this));
+        document.addEventListener('mouseup', this.handleImageDragEnd.bind(this));
+        document.addEventListener('touchmove', this.handleImageDrag.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleImageDragEnd.bind(this));
+        e.preventDefault();
+    }
+    
+    startImageResize(e, handle) {
+        this.isResizingImage = true;
+        this.resizeHandle = handle.classList[1]; // nw, ne, sw, se
+        
+        // Add both mouse and touch event listeners
+        document.addEventListener('mousemove', this.handleImageResize.bind(this));
+        document.addEventListener('mouseup', this.handleImageResizeEnd.bind(this));
+        document.addEventListener('touchmove', this.handleImageResize.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleImageResizeEnd.bind(this));
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    getEventCoords(e) {
+        if (e.touches && e.touches.length > 0) {
+            return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+        }
+        return { clientX: e.clientX, clientY: e.clientY };
     }
 
     handleImageDrag(e) {
         if (!this.isDraggingImage) return;
         
+        const coords = this.getEventCoords(e);
+        
         // Calculate mouse position relative to container
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        const mouseX = e.clientX - containerRect.left;
-        const mouseY = e.clientY - containerRect.top;
+        const mouseX = coords.clientX - containerRect.left;
+        const mouseY = coords.clientY - containerRect.top;
         
         // Convert to canvas coordinates
         const canvasX = (mouseX - this.canvasOffset.x - this.dragOffset.x) / this.canvasScale;
@@ -991,24 +1043,33 @@ class DrawingGame {
         const screenX = this.canvasOffset.x + (this.imagePosition.x * this.canvasScale);
         const screenY = this.canvasOffset.y + (this.imagePosition.y * this.canvasScale);
         
-        const overlayImage = document.getElementById('overlayImage');
-        overlayImage.style.left = screenX + 'px';
-        overlayImage.style.top = screenY + 'px';
+        const overlay = document.getElementById('imageOverlay');
+        const imageContainer = overlay.querySelector('.image-container');
+        imageContainer.style.left = screenX + 'px';
+        imageContainer.style.top = screenY + 'px';
+        
+        // Prevent default to avoid scrolling on touch devices
+        e.preventDefault();
     }
 
     handleImageDragEnd() {
         this.isDraggingImage = false;
+        // Remove all event listeners (both mouse and touch)
         document.removeEventListener('mousemove', this.handleImageDrag.bind(this));
         document.removeEventListener('mouseup', this.handleImageDragEnd.bind(this));
+        document.removeEventListener('touchmove', this.handleImageDrag.bind(this));
+        document.removeEventListener('touchend', this.handleImageDragEnd.bind(this));
     }
 
     handleImageResize(e) {
         if (!this.isResizingImage) return;
         
+        const coords = this.getEventCoords(e);
+        
         // Convert mouse position to canvas coordinates
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        const mouseCanvasX = (e.clientX - containerRect.left - this.canvasOffset.x) / this.canvasScale;
-        const mouseCanvasY = (e.clientY - containerRect.top - this.canvasOffset.y) / this.canvasScale;
+        const mouseCanvasX = (coords.clientX - containerRect.left - this.canvasOffset.x) / this.canvasScale;
+        const mouseCanvasY = (coords.clientY - containerRect.top - this.canvasOffset.y) / this.canvasScale;
         
         let newWidth = this.imageSize.width;
         let newHeight = this.imageSize.height;
@@ -1064,18 +1125,27 @@ class DrawingGame {
         const screenWidth = newWidth * this.canvasScale;
         const screenHeight = newHeight * this.canvasScale;
         
+        const overlay = document.getElementById('imageOverlay');
+        const imageContainer = overlay.querySelector('.image-container');
         const overlayImage = document.getElementById('overlayImage');
-        overlayImage.style.left = screenX + 'px';
-        overlayImage.style.top = screenY + 'px';
+        
+        imageContainer.style.left = screenX + 'px';
+        imageContainer.style.top = screenY + 'px';
         overlayImage.style.width = screenWidth + 'px';
         overlayImage.style.height = screenHeight + 'px';
+        
+        // Prevent default to avoid scrolling on touch devices
+        e.preventDefault();
     }
 
     handleImageResizeEnd() {
         this.isResizingImage = false;
         this.resizeHandle = null;
+        // Remove all event listeners (both mouse and touch)
         document.removeEventListener('mousemove', this.handleImageResize.bind(this));
         document.removeEventListener('mouseup', this.handleImageResizeEnd.bind(this));
+        document.removeEventListener('touchmove', this.handleImageResize.bind(this));
+        document.removeEventListener('touchend', this.handleImageResizeEnd.bind(this));
     }
 
     confirmImage() {
@@ -1133,11 +1203,15 @@ class DrawingGame {
         // Re-enable drawing
         this.canvas.style.pointerEvents = 'auto';
         
-        // Clean up event listeners
+        // Clean up event listeners by replacing elements
+        const imageContainer = overlay.querySelector('.image-container');
         const overlayImage = document.getElementById('overlayImage');
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+        
+        // Replace image to remove event listeners
         overlayImage.replaceWith(overlayImage.cloneNode(true));
         
-        const resizeHandles = document.querySelectorAll('.resize-handle');
+        // Replace resize handles to remove event listeners
         resizeHandles.forEach(handle => {
             handle.replaceWith(handle.cloneNode(true));
         });

@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Estilos CSS
- * Versão: 20250130013 - Fix z-index imagens e correção upload duplicado
+ * Versão: 20250130015 - Correção dos resize handles para ficarem ao redor da imagem
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -349,16 +349,28 @@ body {
     pointer-events: all;
 }
 
-.overlay-image {
+.image-container {
     position: absolute;
+    display: inline-block;
+}
+
+.overlay-image {
+    position: relative;
     border: 2px dashed #667eea;
     cursor: move;
     min-width: 50px;
     min-height: 50px;
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 90vw;
+    max-height: 90vh;
     user-select: none;
     z-index: 201;
+    transition: border-color 0.2s ease;
+    display: block;
+}
+
+.overlay-image:hover {
+    border-color: #5a6fd8;
+    border-width: 3px;
 }
 
 .image-controls {
@@ -412,41 +424,50 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
+    z-index: 202;
 }
 
 .resize-handle {
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: 20px;
+    height: 20px;
     background: #667eea;
-    border: 2px solid white;
+    border: 3px solid white;
     border-radius: 50%;
     pointer-events: all;
     cursor: pointer;
     z-index: 203;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.resize-handle:hover {
+    background: #5a6fd8;
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
 .resize-handle.nw {
-    top: -6px;
-    left: -6px;
+    top: -10px;
+    left: -10px;
     cursor: nw-resize;
 }
 
 .resize-handle.ne {
-    top: -6px;
-    right: -6px;
+    top: -10px;
+    right: -10px;
     cursor: ne-resize;
 }
 
 .resize-handle.sw {
-    bottom: -6px;
-    left: -6px;
+    bottom: -10px;
+    left: -10px;
     cursor: sw-resize;
 }
 
 .resize-handle.se {
-    bottom: -6px;
-    right: -6px;
+    bottom: -10px;
+    right: -10px;
     cursor: se-resize;
 }
 
@@ -501,6 +522,44 @@ body {
     .color-btn {
         width: 18px;
         height: 18px;
+    }
+    
+    /* Resize handles para dispositivos móveis - maiores e mais fáceis de tocar */
+    .resize-handle {
+        width: 28px;
+        height: 28px;
+        border: 4px solid white;
+    }
+    
+    .resize-handle.nw {
+        top: -14px;
+        left: -14px;
+    }
+    
+    .resize-handle.ne {
+        top: -14px;
+        right: -14px;
+    }
+    
+    .resize-handle.sw {
+        bottom: -14px;
+        left: -14px;
+    }
+    
+    .resize-handle.se {
+        bottom: -14px;
+        right: -14px;
+    }
+    
+    /* Imagem overlay mais responsiva no mobile */
+    .overlay-image {
+        border: 3px dashed #667eea;
+    }
+    
+    .control-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
     }
 }
 
