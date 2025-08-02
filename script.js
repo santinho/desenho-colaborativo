@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130016 - Logs comentados para limpar console
+ * Versão: 20250130018 - Melhorado filtro de transparência para tons de cinza claros
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -856,16 +856,78 @@ class DrawingGame {
             return;
         }
 
+        // Show loading indicator
+        const uploadBtn = document.getElementById('uploadImageBtn');
+        const originalText = uploadBtn.textContent;
+        uploadBtn.textContent = 'Processando...';
+        uploadBtn.disabled = true;
+
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
-                this.currentImage = img;
-                this.showImageOverlay(img);
+                // Convert white pixels to transparent
+                this.convertWhiteToTransparent(img, (processedImg) => {
+                    this.currentImage = processedImg;
+                    this.showImageOverlay(processedImg);
+                    
+                    // Reset button
+                    uploadBtn.textContent = originalText;
+                    uploadBtn.disabled = false;
+                });
             };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+    }
+
+    convertWhiteToTransparent(img, callback) {
+        // Create a temporary canvas to process the image
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        // Set canvas dimensions to match image
+        tempCanvas.width = img.naturalWidth;
+        tempCanvas.height = img.naturalHeight;
+        
+        // Draw the image onto the canvas
+        tempCtx.drawImage(img, 0, 0);
+        
+        // Get image data
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const data = imageData.data;
+        
+        // Convert white and light gray pixels to transparent
+        // Lower threshold to catch more light gray tones
+        const whiteThreshold = 220; // Reduced from 240 to catch lighter grays
+        
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];     // Red
+            const g = data[i + 1]; // Green
+            const b = data[i + 2]; // Blue
+            const a = data[i + 3]; // Alpha
+            
+            // Check if pixel is close to white or light gray
+            // Also check if the colors are similar to each other (grayscale-like)
+            const minVal = Math.min(r, g, b);
+            const maxVal = Math.max(r, g, b);
+            const isGrayish = (maxVal - minVal) <= 15; // Colors are close to each other (grayish)
+            
+            if (minVal > whiteThreshold && isGrayish) {
+                // Make it transparent if it's a light gray/white tone
+                data[i + 3] = 0; // Set alpha to 0 (fully transparent)
+            }
+        }
+        
+        // Put the modified image data back
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // Create a new image from the processed canvas
+        const processedImg = new Image();
+        processedImg.onload = () => {
+            callback(processedImg);
+        };
+        processedImg.src = tempCanvas.toDataURL('image/png'); // Use PNG to preserve transparency
     }
 
     showImageOverlay(img) {
