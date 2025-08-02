@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130015 - Correção dos resize handles para ficarem ao redor da imagem
+ * Versão: 20250130016 - Logs comentados para limpar console
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -107,13 +107,13 @@ class DrawingGame {
         const isChromeOnMobile = isChrome && isAndroid;
         
         if (isChromeOnMobile) {
-            console.log('🔥 Chrome mobile: Setting up page visibility handler');
+            // console.log('🔥 Chrome mobile: Setting up page visibility handler');
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden && this.currentRoom && !this.hasJoinedRoom) {
-                    console.log('🔥 Chrome mobile: Page became visible, checking connection...');
+                    // console.log('🔥 Chrome mobile: Page became visible, checking connection...');
                     setTimeout(() => {
                         if (!this.hasJoinedRoom && this.isConnected) {
-                            console.log('🔥 Chrome mobile: Retrying JOIN_ROOM after visibility change');
+                            // console.log('🔥 Chrome mobile: Retrying JOIN_ROOM after visibility change');
                             this.sendJoinRoomMessage();
                         }
                     }, 200);
@@ -123,29 +123,29 @@ class DrawingGame {
     }
 
     connectWebSocket() {
-        console.log('connectWebSocket called - protocol:', window.location.protocol, 'host:', window.location.host);
-        console.log('User agent:', navigator.userAgent);
+        // console.log('connectWebSocket called - protocol:', window.location.protocol, 'host:', window.location.host);
+        // console.log('User agent:', navigator.userAgent);
         
         // Enhanced Chrome mobile detection
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isChrome = /Chrome/i.test(navigator.userAgent);
         const isChromeOnMobile = isChrome && isAndroid;
-        console.log('Browser detection:', {
-            isAndroid: isAndroid,
-            isChrome: isChrome,
-            isChromeOnMobile: isChromeOnMobile,
-            userAgent: navigator.userAgent
-        });
+        // console.log('Browser detection:', {
+        //     isAndroid: isAndroid,
+        //     isChrome: isChrome,
+        //     isChromeOnMobile: isChromeOnMobile,
+        //     userAgent: navigator.userAgent
+        // });
         
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/drawing`;
-        console.log('WebSocket URL:', wsUrl);
+        // console.log('WebSocket URL:', wsUrl);
         
         this.websocket = new WebSocket(wsUrl);
         
         this.websocket.onopen = () => {
-            console.log('WebSocket connected successfully');
-            console.log('Chrome mobile detection in onopen:', isChromeOnMobile);
+            // console.log('WebSocket connected successfully');
+            // console.log('Chrome mobile detection in onopen:', isChromeOnMobile);
             this.isConnected = true;
             this.updateConnectionStatus(true);
             
@@ -156,16 +156,16 @@ class DrawingGame {
             
             // Process queued messages
             if (this.messageQueue && this.messageQueue.length > 0) {
-                console.log('Processing', this.messageQueue.length, 'queued messages');
+                // console.log('Processing', this.messageQueue.length, 'queued messages');
                 this.messageQueue.forEach((message, index) => {
-                    console.log('Sending queued message', index + 1, ':', message);
+                    // console.log('Sending queued message', index + 1, ':', message);
                     if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
-                        console.log('Chrome mobile: Processing queued JOIN_ROOM message');
+                        // console.log('Chrome mobile: Processing queued JOIN_ROOM message');
                     }
                     try {
                         this.websocket.send(JSON.stringify(message));
                         if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
-                            console.log('Chrome mobile: Queued JOIN_ROOM sent successfully');
+                            // console.log('Chrome mobile: Queued JOIN_ROOM sent successfully');
                         }
                     } catch (error) {
                         console.error('Error sending queued message:', error);
@@ -179,20 +179,20 @@ class DrawingGame {
             
             // If we have room info but haven't joined yet, send JOIN_ROOM immediately
             if (this.currentRoom && this.playerName && !this.hasJoinedRoom) {
-                console.log('Auto-joining room on WebSocket connect');
+                // console.log('Auto-joining room on WebSocket connect');
                 if (isChromeOnMobile) {
-                    console.log('Chrome mobile: Applying special AUTO-JOIN strategy');
+                    // console.log('Chrome mobile: Applying special AUTO-JOIN strategy');
                     // For Chrome mobile, try multiple times with different delays
                     setTimeout(() => this.sendJoinRoomMessage(), 100);
                     setTimeout(() => {
                         if (!this.hasJoinedRoom) {
-                            console.log('Chrome mobile: AUTO-JOIN retry 1');
+                            // console.log('Chrome mobile: AUTO-JOIN retry 1');
                             this.sendJoinRoomMessage();
                         }
                     }, 500);
                     setTimeout(() => {
                         if (!this.hasJoinedRoom) {
-                            console.log('Chrome mobile: AUTO-JOIN retry 2');
+                            // console.log('Chrome mobile: AUTO-JOIN retry 2');
                             this.sendJoinRoomMessage();
                         }
                     }, 1000);
@@ -206,7 +206,7 @@ class DrawingGame {
         };
         
         this.websocket.onmessage = (event) => {
-            console.log('WebSocket message received:', event.data);
+            // console.log('WebSocket message received:', event.data);
             try {
                 const message = JSON.parse(event.data);
                 this.handleWebSocketMessage(message);
@@ -216,7 +216,7 @@ class DrawingGame {
         };
         
         this.websocket.onclose = (event) => {
-            console.log('WebSocket disconnected - code:', event.code, 'reason:', event.reason);
+            // console.log('WebSocket disconnected - code:', event.code, 'reason:', event.reason);
             this.isConnected = false;
             this.updateConnectionStatus(false);
             this.scheduleReconnect();
@@ -233,7 +233,7 @@ class DrawingGame {
         if (!this.reconnectInterval && this.currentRoom) {
             this.reconnectInterval = setInterval(() => {
                 if (!this.isConnected) {
-                    console.log('Attempting to reconnect...');
+                    // console.log('Attempting to reconnect...');
                     this.connectWebSocket();
                 }
             }, 5000);
@@ -272,7 +272,7 @@ class DrawingGame {
     }
 
     sendWebSocketMessage(message) {
-        console.log('sendWebSocketMessage called with:', message);
+        // console.log('sendWebSocketMessage called with:', message);
         
         // Enhanced Chrome mobile detection
         const isAndroid = /Android/i.test(navigator.userAgent);
@@ -280,17 +280,17 @@ class DrawingGame {
         const isChromeOnMobile = isChrome && isAndroid;
         
         if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
-            console.log('🔥 Chrome mobile: sendWebSocketMessage called for JOIN_ROOM');
-            console.log('🔥 Chrome mobile: Message details:', JSON.stringify(message));
-            console.log('🔥 Chrome mobile: WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
+            // console.log('🔥 Chrome mobile: sendWebSocketMessage called for JOIN_ROOM');
+            // console.log('🔥 Chrome mobile: Message details:', JSON.stringify(message));
+            // console.log('🔥 Chrome mobile: WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
         }
         
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-            console.log('WebSocket is open, sending message:', JSON.stringify(message));
+            // console.log('WebSocket is open, sending message:', JSON.stringify(message));
             try {
                 this.websocket.send(JSON.stringify(message));
                 if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
-                    console.log('🔥 Chrome mobile: JOIN_ROOM successfully sent via sendWebSocketMessage');
+                    // console.log('🔥 Chrome mobile: JOIN_ROOM successfully sent via sendWebSocketMessage');
                 }
             } catch (error) {
                 console.error('Error sending WebSocket message:', error);
@@ -308,12 +308,12 @@ class DrawingGame {
             this.messageQueue.push(message);
             
             if (isChromeOnMobile && message.type === 'JOIN_ROOM') {
-                console.log('🔥 Chrome mobile: JOIN_ROOM queued for later sending');
+                // console.log('🔥 Chrome mobile: JOIN_ROOM queued for later sending');
             }
             
             // If not connecting, try to connect
             if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
-                console.log('WebSocket closed, attempting to reconnect...');
+                // console.log('WebSocket closed, attempting to reconnect...');
                 this.connectWebSocket();
             }
         }
@@ -349,7 +349,7 @@ class DrawingGame {
                 this.removeFloatingImageLocal(message.imageId);
                 break;
             case 'PLAYER_LIST_UPDATE':
-                console.log('Received player list update:', message.playerName);
+                // console.log('Received player list update:', message.playerName);
                 this.updatePlayersList(message.playerName);
                 // Mark as successfully joined when we receive player list
                 this.hasJoinedRoom = true;
@@ -368,42 +368,42 @@ class DrawingGame {
     }
 
     sendJoinRoomMessage() {
-        console.log('sendJoinRoomMessage called - currentRoom:', this.currentRoom, 'playerName:', this.playerName);
-        console.log('WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
-        console.log('isConnected:', this.isConnected);
+        // console.log('sendJoinRoomMessage called - currentRoom:', this.currentRoom, 'playerName:', this.playerName);
+        // console.log('WebSocket state:', this.websocket ? this.websocket.readyState : 'null');
+        // console.log('isConnected:', this.isConnected);
         
         // Enhanced Chrome mobile detection
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isChrome = /Chrome/i.test(navigator.userAgent);
         const isChromeOnMobile = isChrome && isAndroid;
         
-        console.log('Enhanced Chrome mobile detection:', {
-            isAndroid: isAndroid,
-            isChrome: isChrome,
-            isChromeOnMobile: isChromeOnMobile,
-            userAgent: navigator.userAgent.substring(0, 100) + '...'
-        });
+        // console.log('Enhanced Chrome mobile detection:', {
+        //     isAndroid: isAndroid,
+        //     isChrome: isChrome,
+        //     isChromeOnMobile: isChromeOnMobile,
+        //     userAgent: navigator.userAgent.substring(0, 100) + '...'
+        // });
         
         if (this.currentRoom && this.playerName) {
-            console.log('Sending JOIN_ROOM message for:', this.currentRoom, this.playerName);
+            // console.log('Sending JOIN_ROOM message for:', this.currentRoom, this.playerName);
             const joinMessage = {
                 type: 'JOIN_ROOM',
                 roomId: this.currentRoom,
                 playerName: this.playerName
             };
-            console.log('JOIN_ROOM message object:', JSON.stringify(joinMessage));
+            // console.log('JOIN_ROOM message object:', JSON.stringify(joinMessage));
             
             // Chrome mobile specific: Multiple aggressive attempts with forced sends
             if (isChromeOnMobile) {
-                console.log('🔥 Chrome mobile: Using SUPER AGGRESSIVE JOIN_ROOM strategy');
+                // console.log('🔥 Chrome mobile: Using SUPER AGGRESSIVE JOIN_ROOM strategy');
                 
                 // Force immediate multiple sends
                 for (let i = 0; i < 3; i++) {
                     if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                        console.log(`🔥 Chrome mobile: FORCE send attempt ${i + 1}`);
+                        // console.log(`🔥 Chrome mobile: FORCE send attempt ${i + 1}`);
                         try {
                             this.websocket.send(JSON.stringify(joinMessage));
-                            console.log(`🔥 Chrome mobile: FORCE attempt ${i + 1} sent`);
+                            // console.log(`🔥 Chrome mobile: FORCE attempt ${i + 1} sent`);
                         } catch (error) {
                             console.error(`🔥 Chrome mobile: FORCE attempt ${i + 1} failed:`, error);
                         }
@@ -415,10 +415,10 @@ class DrawingGame {
                 delays.forEach((delay, index) => {
                     setTimeout(() => {
                         if (!this.hasJoinedRoom && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                            console.log(`🔥 Chrome mobile: Delayed attempt ${index + 1} - After ${delay}ms`);
+                            // console.log(`🔥 Chrome mobile: Delayed attempt ${index + 1} - After ${delay}ms`);
                             try {
                                 this.websocket.send(JSON.stringify(joinMessage));
-                                console.log(`🔥 Chrome mobile: Delayed attempt ${index + 1} sent`);
+                                // console.log(`🔥 Chrome mobile: Delayed attempt ${index + 1} sent`);
                             } catch (error) {
                                 console.error(`🔥 Chrome mobile: Delayed attempt ${index + 1} failed:`, error);
                             }
@@ -429,7 +429,7 @@ class DrawingGame {
                 // Also use the standard method as backup
                 setTimeout(() => {
                     if (!this.hasJoinedRoom) {
-                        console.log('🔥 Chrome mobile: Using standard method as backup');
+                        // console.log('🔥 Chrome mobile: Using standard method as backup');
                         this.sendWebSocketMessage(joinMessage);
                     }
                 }, 1500);
@@ -437,16 +437,16 @@ class DrawingGame {
             } else {
                 // Standard behavior for non-Chrome mobile
                 if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                    console.log('Standard: Sending JOIN_ROOM directly via WebSocket');
+                    // console.log('Standard: Sending JOIN_ROOM directly via WebSocket');
                     try {
                         this.websocket.send(JSON.stringify(joinMessage));
-                        console.log('Standard: JOIN_ROOM sent successfully');
+                        // console.log('Standard: JOIN_ROOM sent successfully');
                     } catch (error) {
                         console.error('Standard: Error sending JOIN_ROOM:', error);
                         this.sendWebSocketMessage(joinMessage);
                     }
                 } else {
-                    console.log('Standard: WebSocket not ready, using sendWebSocketMessage method');
+                    // console.log('Standard: WebSocket not ready, using sendWebSocketMessage method');
                     this.sendWebSocketMessage(joinMessage);
                 }
             }
@@ -456,7 +456,7 @@ class DrawingGame {
                 const retryDelay = isChromeOnMobile ? 2000 : 3000;
                 this.joinRetryTimeout = setTimeout(() => {
                     if (!this.hasJoinedRoom && this.currentRoom) {
-                        console.log('🔄 JOIN_ROOM failed, retrying... hasJoinedRoom:', this.hasJoinedRoom);
+                        // console.log('🔄 JOIN_ROOM failed, retrying... hasJoinedRoom:', this.hasJoinedRoom);
                         this.sendJoinRoomMessage();
                     }
                     this.joinRetryTimeout = null;
@@ -514,13 +514,13 @@ class DrawingGame {
                 } else if (isMobile) {
                     delay = 1500; // Other mobile browsers
                 }
-                console.log('🔍 Room creation detection:', {
-                    isAndroid: isAndroid,
-                    isChrome: isChrome,
-                    isChromeOnMobile: isChromeOnMobile,
-                    isMobile: isMobile,
-                    delay: delay
-                });
+                // console.log('🔍 Room creation detection:', {
+                //     isAndroid: isAndroid,
+                //     isChrome: isChrome,
+                //     isChromeOnMobile: isChromeOnMobile,
+                //     isMobile: isMobile,
+                //     delay: delay
+                // });
                 setTimeout(() => {
                     this.sendJoinRoomMessage();
                 }, delay);
@@ -565,13 +565,13 @@ class DrawingGame {
         } else if (isMobile) {
             delay = 1500; // Other mobile browsers
         }
-        console.log('🔍 Join room detection:', {
-            isAndroid: isAndroid,
-            isChrome: isChrome,
-            isChromeOnMobile: isChromeOnMobile,
-            isMobile: isMobile,
-            delay: delay
-        });
+        // console.log('🔍 Join room detection:', {
+        //     isAndroid: isAndroid,
+        //     isChrome: isChrome,
+        //     isChromeOnMobile: isChromeOnMobile,
+        //     isMobile: isMobile,
+        //     delay: delay
+        // });
         setTimeout(() => {
             this.sendJoinRoomMessage();
         }, delay);
@@ -1254,25 +1254,25 @@ class DrawingGame {
         
         container.appendChild(floatingImg);
         
-        console.log('Added floating image:', imageMessage.imageId, {
-            canvasCoords: { x: imageMessage.imageX, y: imageMessage.imageY, w: imageMessage.imageWidth, h: imageMessage.imageHeight },
-            screenCoords: { x: screenX, y: screenY, w: screenWidth, h: screenHeight },
-            canvasRect: { x: canvasOffsetX, y: canvasOffsetY, scale: canvasScale }
-        });
+        // console.log('Added floating image:', imageMessage.imageId, {
+        //     canvasCoords: { x: imageMessage.imageX, y: imageMessage.imageY, w: imageMessage.imageWidth, h: imageMessage.imageHeight },
+        //     screenCoords: { x: screenX, y: screenY, w: screenWidth, h: screenHeight },
+        //     canvasRect: { x: canvasOffsetX, y: canvasOffsetY, scale: canvasScale }
+        // });
     }
 
     removeFloatingImageLocal(imageId) {
         const floatingImg = document.getElementById(imageId);
         if (floatingImg) {
             floatingImg.remove();
-            console.log('Removed floating image:', imageId);
+            // console.log('Removed floating image:', imageId);
         }
     }
 
     clearFloatingImages() {
         const container = document.getElementById('floatingImages');
         container.innerHTML = '';
-        console.log('Cleared all floating images');
+        // console.log('Cleared all floating images');
     }
 
     repositionFloatingImages() {
