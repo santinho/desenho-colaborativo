@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130018 - Melhorado filtro de transparência para tons de cinza claros
+ * Versão: 20250130019 - Filtro de transparência estendido para cinzas mais escuros (161+)
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -897,9 +897,9 @@ class DrawingGame {
         const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
         const data = imageData.data;
         
-        // Convert white and light gray pixels to transparent
-        // Lower threshold to catch more light gray tones
-        const whiteThreshold = 220; // Reduced from 240 to catch lighter grays
+        // Convert white and gray pixels to transparent
+        // Extended threshold to catch darker grays including RGB(161, 161, 161)
+        const grayThreshold = 120; // Lowered to catch darker grays like (161, 161, 161)
         
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i];     // Red
@@ -907,14 +907,14 @@ class DrawingGame {
             const b = data[i + 2]; // Blue
             const a = data[i + 3]; // Alpha
             
-            // Check if pixel is close to white or light gray
-            // Also check if the colors are similar to each other (grayscale-like)
+            // Check if pixel is gray/white and should be made transparent
+            // Check if all RGB values are >= threshold and colors are similar (grayscale-like)
             const minVal = Math.min(r, g, b);
             const maxVal = Math.max(r, g, b);
-            const isGrayish = (maxVal - minVal) <= 15; // Colors are close to each other (grayish)
+            const isGrayish = (maxVal - minVal) <= 20; // Slightly increased tolerance for gray detection
             
-            if (minVal > whiteThreshold && isGrayish) {
-                // Make it transparent if it's a light gray/white tone
+            if (minVal >= grayThreshold && isGrayish) {
+                // Make it transparent if it's a gray/white tone
                 data[i + 3] = 0; // Set alpha to 0 (fully transparent)
             }
         }
