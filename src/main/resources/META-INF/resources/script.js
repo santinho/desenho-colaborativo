@@ -56,9 +56,9 @@ class DrawingGame {
         document.getElementById('eraserTool').addEventListener('click', () => this.selectTool('eraser'));
         document.getElementById('sprayTool').addEventListener('click', () => this.selectTool('spray'));
         
-        // Image upload
+        // Image selection
         document.getElementById('uploadImageBtn').addEventListener('click', () => {
-            document.getElementById('imageUpload').click();
+            this.showImageSelectionModal();
         });
         document.getElementById('imageUpload').addEventListener('change', (e) => this.handleImageUpload(e));
         document.getElementById('confirmImage').addEventListener('click', () => this.confirmImage());
@@ -99,6 +99,22 @@ class DrawingGame {
                 document.getElementById('colorPicker').value = this.currentColor;
                 document.querySelector('.preset-colors').classList.add('hidden');
             });
+        });
+        
+        // Image selection modal events
+        document.getElementById('closeImageModal').addEventListener('click', () => {
+            this.hideImageSelectionModal();
+        });
+        
+        document.getElementById('uploadOption').addEventListener('click', () => {
+            document.getElementById('imageUpload').click();
+        });
+        
+        // Close modal when clicking outside
+        document.getElementById('imageSelectionModal').addEventListener('click', (e) => {
+            if (e.target.id === 'imageSelectionModal') {
+                this.hideImageSelectionModal();
+            }
         });
         
         // Chrome mobile specific: Handle page visibility changes
@@ -856,6 +872,9 @@ class DrawingGame {
             return;
         }
 
+        // Hide the modal
+        this.hideImageSelectionModal();
+
         // Show loading indicator
         const uploadBtn = document.getElementById('uploadImageBtn');
         const originalText = uploadBtn.textContent;
@@ -928,6 +947,310 @@ class DrawingGame {
             callback(processedImg);
         };
         processedImg.src = tempCanvas.toDataURL('image/png'); // Use PNG to preserve transparency
+    }
+
+    async loadAvailableImages() {
+        try {
+            console.log('🖼️ Loading available images...');
+            
+            // Gerar lista dinâmica de 001.jpg até 100.jpg
+            const baseImages = [];
+            for (let i = 1; i <= 100; i++) {
+                const paddedNumber = i.toString().padStart(3, '0');
+                baseImages.push(`${paddedNumber}.jpg`);
+            }
+            
+            console.log(`🔍 Will check ${baseImages.length} possible images (001.jpg to 100.jpg)`);
+            
+            const imageOptions = document.querySelector('.image-options');
+            const uploadOption = document.getElementById('uploadOption');
+            
+            console.log('🔍 Checking DOM elements...');
+            console.log('imageOptions found:', !!imageOptions);
+            console.log('uploadOption found:', !!uploadOption);
+            
+            if (!imageOptions) {
+                console.error('❌ .image-options not found in DOM');
+                return;
+            }
+            
+            if (!uploadOption) {
+                console.error('❌ #uploadOption not found in DOM');
+                return;
+            }
+            
+            // Remove todas as imagens predefinidas existentes
+            const existingImages = imageOptions.querySelectorAll('.image-option[data-image]');
+            existingImages.forEach(img => img.remove());
+            console.log(`🗑️ Removed ${existingImages.length} existing images`);
+            
+            // Função para verificar se uma imagem existe
+            const imageExists = (src) => {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => {
+                        console.log(`✅ Image exists: ${src}`);
+                        resolve(true);
+                    };
+                    img.onerror = () => {
+                        // console.log(`❌ Image not found: ${src}`); // Remover log para não poluir
+                        resolve(false);
+                    };
+                    
+                    // Set timeout to avoid hanging
+                    setTimeout(() => {
+                        // console.log(`⏰ Timeout for image: ${src}`); // Remover log para não poluir
+                        resolve(false);
+                    }, 2000); // Reduzir timeout para ser mais rápido
+                    
+                    img.src = src;
+                });
+            };
+            
+            let imagesAdded = 0;
+            
+            // Verificar em lotes para não travar o navegador
+            const batchSize = 10;
+            for (let batchStart = 0; batchStart < baseImages.length; batchStart += batchSize) {
+                const batch = baseImages.slice(batchStart, batchStart + batchSize);
+                
+                // Processar lote em paralelo
+                const batchPromises = batch.map(async (imageName) => {
+                    const imagePath = `images/${imageName}`;
+                    
+                    try {
+                        const exists = await imageExists(imagePath);
+                        if (exists) {
+                            console.log(`📷 Adding image to modal: ${imagePath}`);
+                            
+                            const imageOption = document.createElement('div');
+                            imageOption.className = 'image-option';
+                            imageOption.dataset.image = imagePath;
+                            
+                            const imagePreview = document.createElement('div');
+                            imagePreview.className = 'image-preview';
+                            
+                            const img = document.createElement('img');
+                            img.src = imagePath;
+                            img.alt = imageName;
+                            img.loading = 'lazy';
+                            
+                            imagePreview.appendChild(img);
+                            imageOption.appendChild(imagePreview);
+                            
+                            // Adicionar event listener
+                            imageOption.addEventListener('click', () => {
+                                console.log(`🖱️ Clicked on image: ${imagePath}`);
+                                this.loadPredefinedImage(imagePath);
+                            });
+                            
+                            // Inserir após a opção de upload
+                            imageOptions.insertBefore(imageOption, uploadOption.nextSibling);
+                            imagesAdded++;
+                            
+                            return true;
+                        }
+                        return false;
+                    } catch (error) {
+                        console.error(`❌ Error checking image ${imagePath}:`, error);
+                        return false;
+                    }
+                });
+                
+                // Aguardar o lote atual terminar antes de continuar
+                await Promise.all(batchPromises);
+                
+                // Pequena pausa entre lotes para não travar a UI
+                if (batchStart + batchSize < baseImages.length) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            }
+            
+            console.log(`✅ Finished loading available images. Added: ${imagesAdded} out of ${baseImages.length} checked`);
+            return imagesAdded;
+            
+        } catch (error) {
+            console.error('❌ Critical error in loadAvailableImages:', error);
+            return 0;
+        }
+    }
+
+    showImageSelectionModal() {
+        console.log('🚀 Opening image selection modal...');
+        const modal = document.getElementById('imageSelectionModal');
+        
+        if (!modal) {
+            console.error('❌ Modal not found in DOM!');
+            return;
+        }
+        
+        console.log('✅ Modal found, removing hidden class...');
+        modal.classList.remove('hidden');
+        
+        // Verificar se a modal está visível
+        setTimeout(() => {
+            const modalStyle = window.getComputedStyle(modal);
+            console.log('📊 Modal display style:', modalStyle.display);
+            console.log('📊 Modal visibility:', modalStyle.visibility);
+        }, 100);
+        
+        // Carregar imagens disponíveis dinamicamente
+        console.log('🔄 Starting to load available images...');
+        this.loadAvailableImages().catch(error => {
+            console.error('❌ Error in loadAvailableImages:', error);
+        });
+        
+        // Fallback: forçar carregamento das imagens conhecidas após um delay
+        setTimeout(() => {
+            console.log('⏰ Triggering fallback after 500ms...');
+            this.loadKnownImages();
+        }, 500);
+    }
+    
+    loadKnownImages() {
+        console.log('🔄 Loading known images as fallback...');
+        
+        const imageOptions = document.querySelector('.image-options');
+        const uploadOption = document.getElementById('uploadOption');
+        
+        console.log('🔍 Fallback - Checking DOM elements...');
+        console.log('imageOptions found:', !!imageOptions);
+        console.log('uploadOption found:', !!uploadOption);
+        
+        if (!imageOptions) {
+            console.error('❌ .image-options not found in fallback');
+            return;
+        }
+        
+        if (!uploadOption) {
+            console.error('❌ #uploadOption not found in fallback');
+            return;
+        }
+        
+        // Gerar lista dinâmica de 001.jpg até 020.jpg para fallback (mais rápido)
+        const knownImages = [];
+        for (let i = 1; i <= 20; i++) {
+            const paddedNumber = i.toString().padStart(3, '0');
+            knownImages.push(`${paddedNumber}.jpg`);
+        }
+        
+        console.log(`🔄 Fallback will check ${knownImages.length} images (001.jpg to 020.jpg)`);
+        
+        // Verificar se as imagens já foram adicionadas
+        const existingImages = imageOptions.querySelectorAll('.image-option[data-image]');
+        console.log(`🔍 Found ${existingImages.length} existing images`);
+        
+        if (existingImages.length > 0) {
+            console.log(`ℹ️ Images already loaded (${existingImages.length} found), skipping fallback`);
+            return;
+        }
+        
+        console.log('⚠️ No images found by async loader, adding known images...');
+        
+        let addedCount = 0;
+        
+        knownImages.forEach((imageName, index) => {
+            const imagePath = `images/${imageName}`;
+            // console.log(`📷 Force adding image ${index + 1}/${knownImages.length}: ${imagePath}`); // Silenciar para não poluir
+            
+            try {
+                const imageOption = document.createElement('div');
+                imageOption.className = 'image-option';
+                imageOption.dataset.image = imagePath;
+                
+                const imagePreview = document.createElement('div');
+                imagePreview.className = 'image-preview';
+                
+                const img = document.createElement('img');
+                img.src = imagePath;
+                img.alt = imageName;
+                img.loading = 'lazy';
+                
+                // Debug: add error handling to img
+                img.onerror = () => {
+                    // console.error(`❌ Failed to load fallback image: ${imagePath}`); // Silenciar
+                    // Remove o elemento se a imagem não carregar
+                    if (imageOption.parentNode) {
+                        imageOption.parentNode.removeChild(imageOption);
+                    }
+                };
+                
+                img.onload = () => {
+                    console.log(`✅ Fallback image loaded: ${imagePath}`);
+                };
+                
+                imagePreview.appendChild(img);
+                imageOption.appendChild(imagePreview);
+                
+                // Adicionar event listener
+                imageOption.addEventListener('click', () => {
+                    console.log(`🖱️ Clicked on fallback image: ${imagePath}`);
+                    this.loadPredefinedImage(imagePath);
+                });
+                
+                // Inserir após a opção de upload
+                const nextSibling = uploadOption.nextSibling;
+                if (nextSibling) {
+                    imageOptions.insertBefore(imageOption, nextSibling);
+                } else {
+                    imageOptions.appendChild(imageOption);
+                }
+                
+                addedCount++;
+                
+            } catch (error) {
+                console.error(`❌ Error adding fallback image ${imageName}:`, error);
+            }
+        });
+        
+        console.log(`✅ Finished loading known images as fallback. Added: ${addedCount} placeholders`);
+        
+        // Verificar o estado final da modal
+        setTimeout(() => {
+            const finalImages = imageOptions.querySelectorAll('.image-option[data-image]');
+            const workingImages = Array.from(finalImages).filter(img => {
+                const imgElement = img.querySelector('img');
+                return imgElement && imgElement.complete && imgElement.naturalWidth > 0;
+            });
+            console.log(`� Final count - Total: ${finalImages.length}, Working: ${workingImages.length}`);
+        }, 2000);
+    }
+
+    hideImageSelectionModal() {
+        const modal = document.getElementById('imageSelectionModal');
+        modal.classList.add('hidden');
+    }
+
+    loadPredefinedImage(imagePath) {
+        // Hide the modal
+        this.hideImageSelectionModal();
+        
+        // Show loading indicator
+        const uploadBtn = document.getElementById('uploadImageBtn');
+        const originalText = uploadBtn.textContent;
+        uploadBtn.textContent = 'Carregando...';
+        uploadBtn.disabled = true;
+
+        const img = new Image();
+        img.onload = () => {
+            // Convert white pixels to transparent for predefined images too
+            this.convertWhiteToTransparent(img, (processedImg) => {
+                this.currentImage = processedImg;
+                this.showImageOverlay(processedImg);
+                
+                // Reset button
+                uploadBtn.textContent = originalText;
+                uploadBtn.disabled = false;
+            });
+        };
+        
+        img.onerror = () => {
+            alert('Erro ao carregar a imagem. Tente novamente.');
+            uploadBtn.textContent = originalText;
+            uploadBtn.disabled = false;
+        };
+        
+        img.src = imagePath;
     }
 
     showImageOverlay(img) {
