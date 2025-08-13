@@ -1,31 +1,7 @@
-# Ignore build outputs
-target/
+# Ignore everything by default
+*
+
+# Allow only the native executable
+!target/
+target/*
 !target/*-runner
-*.jar
-*.war
-*.ear
-*.class
-
-# Ignore IDE files
-.vscode/
-.idea/
-*.iml
-*.ipr
-*.iws
-
-# Ignore Git
-.git/
-
-# Ignore logs
-*.log
-
-# Ignore OS files
-.DS_Store
-Thumbs.db
-
-# Ignore temporary files
-*.tmp
-*.temp
-
-# Ignore node modules if any
-node_modules/
