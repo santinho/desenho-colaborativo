@@ -2,7 +2,9 @@ package com.desenho.model;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 
+@RegisterForReflection
 public class Room {
     private String roomId;
     private Set<String> players;

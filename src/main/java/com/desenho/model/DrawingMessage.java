@@ -2,6 +2,9 @@ package com.desenho.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
+@RegisterForReflection
 public class DrawingMessage {
     
     @JsonProperty("type")
@@ -37,6 +40,7 @@ public class DrawingMessage {
     @JsonProperty("imageHeight")
     private Double imageHeight;
     
+    @RegisterForReflection
     public enum MessageType {
         JOIN_ROOM,
         LEAVE_ROOM,
@@ -49,6 +53,7 @@ public class DrawingMessage {
         FLOATING_IMAGE_REMOVE
     }
     
+    @RegisterForReflection
     public static class DrawingAction {
         @JsonProperty("tool")
         private String tool;
