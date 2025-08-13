@@ -1,5 +1,5 @@
-# Use RHEL8 as base image
-FROM registry.access.redhat.com/rhel8/rhel:latest
+# Use UBI8 minimal as base image (free and public)
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 # Set working directory
 WORKDIR /app
