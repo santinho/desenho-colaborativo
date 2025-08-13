@@ -1,5 +1,6 @@
 # Ignore build outputs
 target/
+!target/*-runner
 *.jar
 *.war
 *.ear
