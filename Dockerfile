@@ -5,7 +5,7 @@ FROM registry.access.redhat.com/rhel8/rhel:latest
 WORKDIR /app
 
 # Copy the native executable from target folder
-COPY target/desenho-colaborativo-1.0.0-SNAPSHOT-runner ./desenho-colaborativo-runner
+COPY target/desenho-colaborativo-1.0.0-runner ./desenho-colaborativo-runner
 
 # Make the executable file executable
 RUN chmod +x ./desenho-colaborativo-runner
