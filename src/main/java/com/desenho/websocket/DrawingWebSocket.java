@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @ServerEndpoint("/drawing")
 @ApplicationScoped
 public class DrawingWebSocket {
+
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(DrawingWebSocket.class.getName());
     
     @Inject
     RoomService roomService;
@@ -31,13 +33,13 @@ public class DrawingWebSocket {
     @OnMessage
     public void onMessage(String message, Session session) {
         try {
-            // logger.info("Raw message received from session " + session.getId() + ": " + message);
+             logger.info("Raw message received from session " + session.getId() + ": " + message);
             DrawingMessage drawingMessage = objectMapper.readValue(message, DrawingMessage.class);
-            // logger.info("Parsed message type: " + drawingMessage.getType() + " from session: " + session.getId());
+             logger.info("Parsed message type: " + drawingMessage.getType() + " from session: " + session.getId());
             handleMessage(drawingMessage, session);
         } catch (Exception e) {
-            // logger.severe("Error processing message from session " + session.getId() + ": " + e.getMessage());
-            // logger.severe("Raw message was: " + message);
+             logger.severe("Error processing message from session " + session.getId() + ": " + e.getMessage());
+             logger.severe("Raw message was: " + message);
             sendErrorMessage(session, "Invalid message format");
         }
     }
