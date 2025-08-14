@@ -32,6 +32,9 @@ class DrawingGame {
         this.dragOffset = { x: 0, y: 0 };
         this.canvasScale = 1;
         this.canvasOffset = { x: 0, y: 0 };
+        this.zoom = 1;
+        this.isPinching = false;
+        this.pinchDistance = 0;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -647,39 +650,68 @@ class DrawingGame {
         // Set up canvas
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
-        
+
+        // Ensure CSS size matches canvas pixels
+        this.canvas.style.width = this.canvas.width + 'px';
+        this.canvas.style.height = this.canvas.height + 'px';
+
         // Add event listeners
         this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
         this.canvas.addEventListener('mousemove', (e) => this.draw(e));
         this.canvas.addEventListener('mouseup', () => this.stopDrawing());
         this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+
+        // Zoom handling
+        container.addEventListener('wheel', (e) => this.handleZoom(e), { passive: false });
+        window.addEventListener('keydown', (e) => this.handleKeyZoom(e));
         
         // Touch events for mobile
         this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousedown', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            this.canvas.dispatchEvent(mouseEvent);
-        });
-        
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                this.isPinching = true;
+                this.stopDrawing();
+                this.pinchDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+            } else {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
+
         this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousemove', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            this.canvas.dispatchEvent(mouseEvent);
-        });
-        
+            if (this.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                const newDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+                const zoomFactor = newDistance / this.pinchDistance;
+                this.pinchDistance = newDistance;
+                this.setZoom(this.zoom * zoomFactor);
+            } else if (e.touches.length === 1) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
+
         this.canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const mouseEvent = new MouseEvent('mouseup', {});
-            this.canvas.dispatchEvent(mouseEvent);
-        });
+            if (this.isPinching && e.touches.length < 2) {
+                this.isPinching = false;
+                this.pinchDistance = 0;
+            }
+            if (e.touches.length === 0) {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {});
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
     }
 
     loadCanvasFromData(canvasData) {
@@ -728,10 +760,62 @@ class DrawingGame {
 
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
         };
+    }
+
+    setZoom(newZoom) {
+        this.zoom = Math.min(Math.max(newZoom, 0.5), 3);
+
+        this.canvas.style.width = (this.canvas.width * this.zoom) + 'px';
+        this.canvas.style.height = (this.canvas.height * this.zoom) + 'px';
+
+        if (this.isImageMode) {
+            const canvasRect = this.canvas.getBoundingClientRect();
+            const canvasOffsetX = canvasRect.left;
+            const canvasOffsetY = canvasRect.top;
+            const imageContainer = document.querySelector('#imageOverlay .image-container');
+            const overlayImage = document.getElementById('overlayImage');
+            const screenX = canvasOffsetX + this.imagePosition.x * this.zoom;
+            const screenY = canvasOffsetY + this.imagePosition.y * this.zoom;
+            const screenWidth = this.imageSize.width * this.zoom;
+            const screenHeight = this.imageSize.height * this.zoom;
+            imageContainer.style.left = screenX + 'px';
+            imageContainer.style.top = screenY + 'px';
+            overlayImage.style.width = screenWidth + 'px';
+            overlayImage.style.height = screenHeight + 'px';
+            this.canvasScale = canvasRect.width / this.canvas.width;
+            this.canvasOffset = { x: canvasOffsetX, y: canvasOffsetY };
+        }
+
+        this.repositionFloatingImages();
+    }
+
+    handleZoom(e) {
+        e.preventDefault();
+        const zoomDelta = e.deltaY < 0 ? 0.1 : -0.1;
+        this.setZoom(this.zoom + zoomDelta);
+    }
+
+    handleKeyZoom(e) {
+        const key = e.key.toLowerCase();
+        if (key === 'a') {
+            e.preventDefault();
+            this.setZoom(this.zoom + 0.1);
+        } else if (key === 'z') {
+            e.preventDefault();
+            this.setZoom(this.zoom - 0.1);
+        }
+    }
+
+    getTouchDistance(t1, t2) {
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        return Math.hypot(dx, dy);
     }
 
     startDrawing(e) {
