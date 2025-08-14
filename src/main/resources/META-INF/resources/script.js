@@ -663,6 +663,7 @@ class DrawingGame {
 
         // Zoom handling
         container.addEventListener('wheel', (e) => this.handleZoom(e), { passive: false });
+        window.addEventListener('keydown', (e) => this.handleKeyZoom(e));
         
         // Touch events for mobile
         this.canvas.addEventListener('touchstart', (e) => {
@@ -795,10 +796,20 @@ class DrawingGame {
     }
 
     handleZoom(e) {
-        if (!e.altKey) return;
         e.preventDefault();
         const zoomDelta = e.deltaY < 0 ? 0.1 : -0.1;
         this.setZoom(this.zoom + zoomDelta);
+    }
+
+    handleKeyZoom(e) {
+        const key = e.key.toLowerCase();
+        if (key === 'a') {
+            e.preventDefault();
+            this.setZoom(this.zoom + 0.1);
+        } else if (key === 'z') {
+            e.preventDefault();
+            this.setZoom(this.zoom - 0.1);
+        }
     }
 
     getTouchDistance(t1, t2) {
