@@ -303,6 +303,8 @@ body {
     padding: 1rem;
     background: #f0f2f5;
     position: relative;
+    transform-origin: top left;
+    touch-action: none;
 }
 
 #drawingCanvas {
@@ -312,6 +314,7 @@ body {
     cursor: crosshair;
     position: relative;
     z-index: 10;
+    touch-action: none;
 }
 
 /* Floating Images Container */

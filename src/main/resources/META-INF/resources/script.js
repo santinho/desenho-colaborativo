@@ -32,6 +32,13 @@ class DrawingGame {
         this.dragOffset = { x: 0, y: 0 };
         this.canvasScale = 1;
         this.canvasOffset = { x: 0, y: 0 };
+
+        // Zoom properties
+        this.zoom = 1;
+        this.minZoom = 0.5;
+        this.maxZoom = 3;
+        this.isPinching = false;
+        this.lastPinchDistance = 0;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -136,6 +143,19 @@ class DrawingGame {
                 }
             });
         }
+
+        // Desktop zoom controls (use Alt + +/- or Alt + scroll)
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && !e.ctrlKey) {
+                if (e.key === '+') {
+                    e.preventDefault();
+                    this.changeZoom(0.1);
+                } else if (e.key === '-') {
+                    e.preventDefault();
+                    this.changeZoom(-0.1);
+                }
+            }
+        });
     }
 
     connectWebSocket() {
@@ -638,6 +658,8 @@ class DrawingGame {
         
         // Set canvas size
         const container = this.canvas.parentElement;
+        this.canvasContainer = container;
+        this.canvasContainer.style.transformOrigin = '0 0';
         const maxWidth = container.clientWidth - 40;
         const maxHeight = container.clientHeight - 40;
         
@@ -649,13 +671,27 @@ class DrawingGame {
         this.ctx.lineJoin = 'round';
         
         // Add event listeners
+        this.canvasContainer.addEventListener('wheel', (e) => {
+            if (e.altKey) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                this.changeZoom(delta);
+            }
+        }, { passive: false });
+
         this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
         this.canvas.addEventListener('mousemove', (e) => this.draw(e));
         this.canvas.addEventListener('mouseup', () => this.stopDrawing());
         this.canvas.addEventListener('mouseout', () => this.stopDrawing());
-        
-        // Touch events for mobile
+
+        // Touch events for mobile (including pinch zoom)
         this.canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                this.isPinching = true;
+                this.lastPinchDistance = this.getTouchDistance(e.touches);
+                return;
+            }
             e.preventDefault();
             const touch = e.touches[0];
             const mouseEvent = new MouseEvent('mousedown', {
@@ -664,8 +700,18 @@ class DrawingGame {
             });
             this.canvas.dispatchEvent(mouseEvent);
         });
-        
+
         this.canvas.addEventListener('touchmove', (e) => {
+            if (this.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                const newDistance = this.getTouchDistance(e.touches);
+                const diff = newDistance - this.lastPinchDistance;
+                if (Math.abs(diff) > 0) {
+                    this.changeZoom(diff * 0.005);
+                }
+                this.lastPinchDistance = newDistance;
+                return;
+            }
             e.preventDefault();
             const touch = e.touches[0];
             const mouseEvent = new MouseEvent('mousemove', {
@@ -674,8 +720,15 @@ class DrawingGame {
             });
             this.canvas.dispatchEvent(mouseEvent);
         });
-        
+
         this.canvas.addEventListener('touchend', (e) => {
+            if (this.isPinching) {
+                e.preventDefault();
+                if (e.touches.length < 2) {
+                    this.isPinching = false;
+                }
+                return;
+            }
             e.preventDefault();
             const mouseEvent = new MouseEvent('mouseup', {});
             this.canvas.dispatchEvent(mouseEvent);
@@ -728,10 +781,31 @@ class DrawingGame {
 
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
         };
+    }
+
+    getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+    }
+
+    changeZoom(delta) {
+        const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.zoom + delta));
+        if (newZoom === this.zoom) return;
+        this.zoom = newZoom;
+        if (this.canvasContainer) {
+            this.canvasContainer.style.transform = `scale(${this.zoom})`;
+            const rect = this.canvas.getBoundingClientRect();
+            this.canvasOffset = { x: rect.left, y: rect.top };
+            this.canvasScale = rect.width / this.canvas.width;
+        }
+        this.repositionFloatingImages();
     }
 
     startDrawing(e) {
@@ -1621,14 +1695,14 @@ class DrawingGame {
         const canvasRect = this.canvas.getBoundingClientRect();
         const canvasOffsetX = canvasRect.left;
         const canvasOffsetY = canvasRect.top;
-        const canvasScale = this.canvas.width / canvasRect.width;
-        
+        const canvasScale = canvasRect.width / this.canvas.width;
+
         // Convert canvas coordinates to screen coordinates
         // imageMessage coordinates are already in canvas pixels
-        const screenX = canvasOffsetX + (imageMessage.imageX / canvasScale);
-        const screenY = canvasOffsetY + (imageMessage.imageY / canvasScale);
-        const screenWidth = imageMessage.imageWidth / canvasScale;
-        const screenHeight = imageMessage.imageHeight / canvasScale;
+        const screenX = canvasOffsetX + (imageMessage.imageX * canvasScale);
+        const screenY = canvasOffsetY + (imageMessage.imageY * canvasScale);
+        const screenWidth = imageMessage.imageWidth * canvasScale;
+        const screenHeight = imageMessage.imageHeight * canvasScale;
         
         // Position the floating image relative to the page (not canvas container)
         floatingImg.style.position = 'fixed';
@@ -1670,7 +1744,7 @@ class DrawingGame {
         const canvasRect = this.canvas.getBoundingClientRect();
         const canvasOffsetX = canvasRect.left;
         const canvasOffsetY = canvasRect.top;
-        const canvasScale = this.canvas.width / canvasRect.width;
+        const canvasScale = canvasRect.width / this.canvas.width;
         
         images.forEach(img => {
             // Get stored canvas coordinates from data attributes
@@ -1681,10 +1755,10 @@ class DrawingGame {
             
             if (!isNaN(canvasX) && !isNaN(canvasY)) {
                 // Recalculate screen position
-                const screenX = canvasOffsetX + (canvasX / canvasScale);
-                const screenY = canvasOffsetY + (canvasY / canvasScale);
-                const screenWidth = canvasWidth / canvasScale;
-                const screenHeight = canvasHeight / canvasScale;
+                const screenX = canvasOffsetX + (canvasX * canvasScale);
+                const screenY = canvasOffsetY + (canvasY * canvasScale);
+                const screenWidth = canvasWidth * canvasScale;
+                const screenHeight = canvasHeight * canvasScale;
                 
                 img.style.left = screenX + 'px';
                 img.style.top = screenY + 'px';
