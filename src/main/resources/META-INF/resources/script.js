@@ -32,6 +32,11 @@ class DrawingGame {
         this.dragOffset = { x: 0, y: 0 };
         this.canvasScale = 1;
         this.canvasOffset = { x: 0, y: 0 };
+
+        // Zoom properties
+        this.zoomLevel = 1;
+        this.minZoom = 0.5;
+        this.maxZoom = 3;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -116,7 +121,28 @@ class DrawingGame {
                 this.hideImageSelectionModal();
             }
         });
-        
+
+        // Zoom controls
+        document.addEventListener('keydown', (e) => {
+            if (!this.canvas) return;
+            if (e.altKey && e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.changeZoom(0.1);
+            } else if (e.altKey && e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.changeZoom(-0.1);
+            }
+        });
+
+        document.addEventListener('wheel', (e) => {
+            if (!this.canvas) return;
+            if (e.altKey && this.canvas.contains(e.target)) {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                this.changeZoom(delta);
+            }
+        }, { passive: false });
+
         // Chrome mobile specific: Handle page visibility changes
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isChrome = /Chrome/i.test(navigator.userAgent);
@@ -680,6 +706,27 @@ class DrawingGame {
             const mouseEvent = new MouseEvent('mouseup', {});
             this.canvas.dispatchEvent(mouseEvent);
         });
+
+        // Initialize transform values for accurate positioning
+        const container = document.querySelector('.canvas-container');
+        container.style.transform = `scale(${this.zoomLevel})`;
+        this.updateCanvasTransform();
+    }
+
+    changeZoom(delta) {
+        const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.zoomLevel + delta));
+        if (newZoom === this.zoomLevel) return;
+        this.zoomLevel = newZoom;
+        const container = document.querySelector('.canvas-container');
+        container.style.transform = `scale(${this.zoomLevel})`;
+        this.updateCanvasTransform();
+    }
+
+    updateCanvasTransform() {
+        if (!this.canvas) return;
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvasScale = rect.width / this.canvas.width;
+        this.canvasOffset = { x: rect.left, y: rect.top };
     }
 
     loadCanvasFromData(canvasData) {
@@ -729,8 +776,8 @@ class DrawingGame {
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) / this.canvasScale,
+            y: (e.clientY - rect.top) / this.canvasScale
         };
     }
 

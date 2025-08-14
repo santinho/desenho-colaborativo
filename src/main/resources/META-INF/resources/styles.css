@@ -303,6 +303,7 @@ body {
     padding: 1rem;
     background: #f0f2f5;
     position: relative;
+    transform-origin: top left;
 }
 
 #drawingCanvas {
