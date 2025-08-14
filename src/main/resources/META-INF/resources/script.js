@@ -663,9 +663,9 @@ class DrawingGame {
         this.ctx = this.canvas.getContext('2d');
         
         // Set canvas size
-        const container = this.canvas.parentElement;
-        const maxWidth = container.clientWidth - 40;
-        const maxHeight = container.clientHeight - 40;
+        const canvasContainer = this.canvas.parentElement;
+        const maxWidth = canvasContainer.clientWidth - 40;
+        const maxHeight = canvasContainer.clientHeight - 40;
         
         this.canvas.width = Math.min(800, maxWidth);
         this.canvas.height = Math.min(600, maxHeight);
@@ -708,8 +708,7 @@ class DrawingGame {
         });
 
         // Initialize transform values for accurate positioning
-        const container = document.querySelector('.canvas-container');
-        container.style.transform = `scale(${this.zoomLevel})`;
+        canvasContainer.style.transform = `scale(${this.zoomLevel})`;
         this.updateCanvasTransform();
     }
 
