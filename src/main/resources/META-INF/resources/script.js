@@ -32,6 +32,7 @@ class DrawingGame {
         this.dragOffset = { x: 0, y: 0 };
         this.canvasScale = 1;
         this.canvasOffset = { x: 0, y: 0 };
+        this.zoom = 1;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -647,12 +648,19 @@ class DrawingGame {
         // Set up canvas
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
-        
+
+        // Ensure CSS size matches canvas pixels
+        this.canvas.style.width = this.canvas.width + 'px';
+        this.canvas.style.height = this.canvas.height + 'px';
+
         // Add event listeners
         this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
         this.canvas.addEventListener('mousemove', (e) => this.draw(e));
         this.canvas.addEventListener('mouseup', () => this.stopDrawing());
         this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+
+        // Zoom handling
+        container.addEventListener('wheel', (e) => this.handleZoom(e), { passive: false });
         
         // Touch events for mobile
         this.canvas.addEventListener('touchstart', (e) => {
@@ -728,10 +736,42 @@ class DrawingGame {
 
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
         };
+    }
+
+    handleZoom(e) {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+        const zoomDelta = e.deltaY < 0 ? 0.1 : -0.1;
+        this.zoom = Math.min(Math.max(this.zoom + zoomDelta, 0.5), 3);
+
+        this.canvas.style.width = (this.canvas.width * this.zoom) + 'px';
+        this.canvas.style.height = (this.canvas.height * this.zoom) + 'px';
+
+        if (this.isImageMode) {
+            const canvasRect = this.canvas.getBoundingClientRect();
+            const canvasOffsetX = canvasRect.left;
+            const canvasOffsetY = canvasRect.top;
+            const imageContainer = document.querySelector('#imageOverlay .image-container');
+            const overlayImage = document.getElementById('overlayImage');
+            const screenX = canvasOffsetX + this.imagePosition.x * this.zoom;
+            const screenY = canvasOffsetY + this.imagePosition.y * this.zoom;
+            const screenWidth = this.imageSize.width * this.zoom;
+            const screenHeight = this.imageSize.height * this.zoom;
+            imageContainer.style.left = screenX + 'px';
+            imageContainer.style.top = screenY + 'px';
+            overlayImage.style.width = screenWidth + 'px';
+            overlayImage.style.height = screenHeight + 'px';
+            this.canvasScale = canvasRect.width / this.canvas.width;
+            this.canvasOffset = { x: canvasOffsetX, y: canvasOffsetY };
+        }
+
+        this.repositionFloatingImages();
     }
 
     startDrawing(e) {
