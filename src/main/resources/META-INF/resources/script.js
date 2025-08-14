@@ -724,9 +724,13 @@ class DrawingGame {
 
     updateCanvasTransform() {
         if (!this.canvas) return;
-        const rect = this.canvas.getBoundingClientRect();
-        this.canvasScale = rect.width / this.canvas.width;
-        this.canvasOffset = { x: rect.left, y: rect.top };
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvasScale = canvasRect.width / this.canvas.width;
+        this.canvasOffset = {
+            x: canvasRect.left - containerRect.left,
+            y: canvasRect.top - containerRect.top
+        };
     }
 
     loadCanvasFromData(canvasData) {
@@ -1673,8 +1677,8 @@ class DrawingGame {
         const screenWidth = imageMessage.imageWidth * this.canvasScale;
         const screenHeight = imageMessage.imageHeight * this.canvasScale;
 
-        // Position the floating image relative to the page (not canvas container)
-        floatingImg.style.position = 'fixed';
+        // Position the floating image relative to the canvas container
+        floatingImg.style.position = 'absolute';
         floatingImg.style.left = screenX + 'px';
         floatingImg.style.top = screenY + 'px';
         floatingImg.style.width = screenWidth + 'px';
