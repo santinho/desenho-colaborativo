@@ -1695,14 +1695,14 @@ class DrawingGame {
         const canvasRect = this.canvas.getBoundingClientRect();
         const canvasOffsetX = canvasRect.left;
         const canvasOffsetY = canvasRect.top;
-        const canvasScale = this.canvas.width / canvasRect.width;
-        
+        const canvasScale = canvasRect.width / this.canvas.width;
+
         // Convert canvas coordinates to screen coordinates
         // imageMessage coordinates are already in canvas pixels
-        const screenX = canvasOffsetX + (imageMessage.imageX / canvasScale);
-        const screenY = canvasOffsetY + (imageMessage.imageY / canvasScale);
-        const screenWidth = imageMessage.imageWidth / canvasScale;
-        const screenHeight = imageMessage.imageHeight / canvasScale;
+        const screenX = canvasOffsetX + (imageMessage.imageX * canvasScale);
+        const screenY = canvasOffsetY + (imageMessage.imageY * canvasScale);
+        const screenWidth = imageMessage.imageWidth * canvasScale;
+        const screenHeight = imageMessage.imageHeight * canvasScale;
         
         // Position the floating image relative to the page (not canvas container)
         floatingImg.style.position = 'fixed';
@@ -1744,7 +1744,7 @@ class DrawingGame {
         const canvasRect = this.canvas.getBoundingClientRect();
         const canvasOffsetX = canvasRect.left;
         const canvasOffsetY = canvasRect.top;
-        const canvasScale = this.canvas.width / canvasRect.width;
+        const canvasScale = canvasRect.width / this.canvas.width;
         
         images.forEach(img => {
             // Get stored canvas coordinates from data attributes
@@ -1755,10 +1755,10 @@ class DrawingGame {
             
             if (!isNaN(canvasX) && !isNaN(canvasY)) {
                 // Recalculate screen position
-                const screenX = canvasOffsetX + (canvasX / canvasScale);
-                const screenY = canvasOffsetY + (canvasY / canvasScale);
-                const screenWidth = canvasWidth / canvasScale;
-                const screenHeight = canvasHeight / canvasScale;
+                const screenX = canvasOffsetX + (canvasX * canvasScale);
+                const screenY = canvasOffsetY + (canvasY * canvasScale);
+                const screenWidth = canvasWidth * canvasScale;
+                const screenHeight = canvasHeight * canvasScale;
                 
                 img.style.left = screenX + 'px';
                 img.style.top = screenY + 'px';
