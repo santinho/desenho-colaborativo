@@ -51,6 +51,7 @@ Após iniciar a aplicação, acesse:
    - **"Criar Nova Sala"**: Gera código automaticamente
    - **"Entrar na Sala"**: Digite um código existente
 4. **Desenhe colaborativamente** com outros usuários!
+5. Use **Alt + rolagem do mouse** ou o **gesto de pinça** no touch para ajustar o zoom do canvas
 
 ## 🏗️ Arquitetura
 

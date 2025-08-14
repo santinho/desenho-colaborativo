@@ -33,6 +33,8 @@ class DrawingGame {
         this.canvasScale = 1;
         this.canvasOffset = { x: 0, y: 0 };
         this.zoom = 1;
+        this.isPinching = false;
+        this.pinchDistance = 0;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -664,30 +666,51 @@ class DrawingGame {
         
         // Touch events for mobile
         this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousedown', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            this.canvas.dispatchEvent(mouseEvent);
-        });
-        
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                this.isPinching = true;
+                this.stopDrawing();
+                this.pinchDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+            } else {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
+
         this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousemove', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            this.canvas.dispatchEvent(mouseEvent);
-        });
-        
+            if (this.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                const newDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+                const zoomFactor = newDistance / this.pinchDistance;
+                this.pinchDistance = newDistance;
+                this.setZoom(this.zoom * zoomFactor);
+            } else if (e.touches.length === 1) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
+
         this.canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const mouseEvent = new MouseEvent('mouseup', {});
-            this.canvas.dispatchEvent(mouseEvent);
-        });
+            if (this.isPinching && e.touches.length < 2) {
+                this.isPinching = false;
+                this.pinchDistance = 0;
+            }
+            if (e.touches.length === 0) {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {});
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
     }
 
     loadCanvasFromData(canvasData) {
@@ -744,11 +767,8 @@ class DrawingGame {
         };
     }
 
-    handleZoom(e) {
-        if (!e.ctrlKey) return;
-        e.preventDefault();
-        const zoomDelta = e.deltaY < 0 ? 0.1 : -0.1;
-        this.zoom = Math.min(Math.max(this.zoom + zoomDelta, 0.5), 3);
+    setZoom(newZoom) {
+        this.zoom = Math.min(Math.max(newZoom, 0.5), 3);
 
         this.canvas.style.width = (this.canvas.width * this.zoom) + 'px';
         this.canvas.style.height = (this.canvas.height * this.zoom) + 'px';
@@ -772,6 +792,19 @@ class DrawingGame {
         }
 
         this.repositionFloatingImages();
+    }
+
+    handleZoom(e) {
+        if (!e.altKey) return;
+        e.preventDefault();
+        const zoomDelta = e.deltaY < 0 ? 0.1 : -0.1;
+        this.setZoom(this.zoom + zoomDelta);
+    }
+
+    getTouchDistance(t1, t2) {
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        return Math.hypot(dx, dy);
     }
 
     startDrawing(e) {
