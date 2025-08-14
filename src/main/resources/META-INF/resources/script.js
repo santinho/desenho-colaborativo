@@ -719,6 +719,7 @@ class DrawingGame {
         const container = document.querySelector('.canvas-container');
         container.style.transform = `scale(${this.zoomLevel})`;
         this.updateCanvasTransform();
+        this.repositionFloatingImages();
     }
 
     updateCanvasTransform() {
@@ -1749,6 +1750,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // Handle window resize
 window.addEventListener('resize', () => {
     if (window.game) {
+        window.game.updateCanvasTransform();
         window.game.repositionFloatingImages();
     }
 });
