@@ -791,6 +791,15 @@ class DrawingGame {
         this.repositionFloatingImages();
     }
 
+    resetZoom() {
+        this.zoomLevel = 1;
+        this.panOffset = { x: 0, y: 0 };
+        const container = document.querySelector('.canvas-container');
+        container.style.transform = 'translate(0px, 0px) scale(1)';
+        this.updateCanvasTransform();
+        this.repositionFloatingImages();
+    }
+
     updateCanvasTransform() {
         if (!this.canvas) return;
         const canvasRect = this.canvas.getBoundingClientRect();
@@ -1402,6 +1411,7 @@ class DrawingGame {
     }
 
     showImageOverlay(img) {
+        this.resetZoom();
         this.isImageMode = true;
         const overlay = document.getElementById('imageOverlay');
         const imageContainer = overlay.querySelector('.image-container');
