@@ -1671,11 +1671,11 @@ class DrawingGame {
         floatingImg.dataset.canvasWidth = imageMessage.imageWidth;
         floatingImg.dataset.canvasHeight = imageMessage.imageHeight;
 
-        // Convert canvas coordinates to screen coordinates
-        const screenX = this.canvasOffset.x + (imageMessage.imageX * this.canvasScale);
-        const screenY = this.canvasOffset.y + (imageMessage.imageY * this.canvasScale);
-        const screenWidth = imageMessage.imageWidth * this.canvasScale;
-        const screenHeight = imageMessage.imageHeight * this.canvasScale;
+        // Convert canvas coordinates to screen coordinates without applying zoom again
+        const screenX = this.canvasOffset.x + imageMessage.imageX;
+        const screenY = this.canvasOffset.y + imageMessage.imageY;
+        const screenWidth = imageMessage.imageWidth;
+        const screenHeight = imageMessage.imageHeight;
 
         // Position the floating image relative to the canvas container
         floatingImg.style.position = 'absolute';
@@ -1724,16 +1724,14 @@ class DrawingGame {
             const canvasHeight = parseFloat(img.dataset.canvasHeight);
 
             if (!isNaN(canvasX) && !isNaN(canvasY)) {
-                // Recalculate screen position
-                const screenX = this.canvasOffset.x + (canvasX * this.canvasScale);
-                const screenY = this.canvasOffset.y + (canvasY * this.canvasScale);
-                const screenWidth = canvasWidth * this.canvasScale;
-                const screenHeight = canvasHeight * this.canvasScale;
+                // Recalculate screen position without applying zoom twice
+                const screenX = this.canvasOffset.x + canvasX;
+                const screenY = this.canvasOffset.y + canvasY;
 
                 img.style.left = screenX + 'px';
                 img.style.top = screenY + 'px';
-                img.style.width = screenWidth + 'px';
-                img.style.height = screenHeight + 'px';
+                img.style.width = canvasWidth + 'px';
+                img.style.height = canvasHeight + 'px';
             }
         });
     }
