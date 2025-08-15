@@ -32,6 +32,16 @@ class DrawingGame {
         this.dragOffset = { x: 0, y: 0 };
         this.canvasScale = 1;
         this.canvasOffset = { x: 0, y: 0 };
+
+        // Zoom properties
+        this.zoomLevel = 1;
+        this.minZoom = 0.5;
+        this.maxZoom = 3;
+
+        // Pinch zoom properties
+        this.isPinching = false;
+        this.pinchStartDist = 0;
+        this.pinchStartZoom = 1;
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -116,7 +126,28 @@ class DrawingGame {
                 this.hideImageSelectionModal();
             }
         });
-        
+
+        // Zoom controls
+        document.addEventListener('keydown', (e) => {
+            if (!this.canvas) return;
+            if (e.altKey && e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.changeZoom(0.1);
+            } else if (e.altKey && e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.changeZoom(-0.1);
+            }
+        });
+
+        document.addEventListener('wheel', (e) => {
+            if (!this.canvas) return;
+            if (e.altKey && this.canvas.contains(e.target)) {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                this.changeZoom(delta);
+            }
+        }, { passive: false });
+
         // Chrome mobile specific: Handle page visibility changes
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isChrome = /Chrome/i.test(navigator.userAgent);
@@ -637,9 +668,9 @@ class DrawingGame {
         this.ctx = this.canvas.getContext('2d');
         
         // Set canvas size
-        const container = this.canvas.parentElement;
-        const maxWidth = container.clientWidth - 40;
-        const maxHeight = container.clientHeight - 40;
+        const canvasContainer = this.canvas.parentElement;
+        const maxWidth = canvasContainer.clientWidth - 40;
+        const maxHeight = canvasContainer.clientHeight - 40;
         
         this.canvas.width = Math.min(800, maxWidth);
         this.canvas.height = Math.min(600, maxHeight);
@@ -657,29 +688,76 @@ class DrawingGame {
         // Touch events for mobile
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousedown', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            this.canvas.dispatchEvent(mouseEvent);
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            } else if (e.touches.length === 2) {
+                this.stopDrawing();
+                this.isPinching = true;
+                const [t1, t2] = e.touches;
+                this.pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                this.pinchStartZoom = this.zoomLevel;
+            }
         });
-        
+
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousemove', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            this.canvas.dispatchEvent(mouseEvent);
+            if (this.isPinching && e.touches.length === 2) {
+                const [t1, t2] = e.touches;
+                const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                const scale = currentDist / this.pinchStartDist;
+                const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.pinchStartZoom * scale));
+                this.changeZoom(newZoom - this.zoomLevel);
+            } else if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
         });
-        
+
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            const mouseEvent = new MouseEvent('mouseup', {});
-            this.canvas.dispatchEvent(mouseEvent);
+            if (this.isPinching) {
+                if (e.touches.length < 2) {
+                    this.isPinching = false;
+                }
+            } else {
+                const mouseEvent = new MouseEvent('mouseup', {});
+                this.canvas.dispatchEvent(mouseEvent);
+            }
         });
+
+        // Initialize transform values for accurate positioning
+        canvasContainer.style.transform = `scale(${this.zoomLevel})`;
+        this.updateCanvasTransform();
+    }
+
+    changeZoom(delta) {
+        const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.zoomLevel + delta));
+        if (newZoom === this.zoomLevel) return;
+        this.zoomLevel = newZoom;
+        const container = document.querySelector('.canvas-container');
+        container.style.transform = `scale(${this.zoomLevel})`;
+        this.updateCanvasTransform();
+        this.repositionFloatingImages();
+    }
+
+    updateCanvasTransform() {
+        if (!this.canvas) return;
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const containerRect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvasScale = (canvasRect.width / this.canvas.width) / this.zoomLevel;
+        this.canvasOffset = {
+            x: (canvasRect.left - containerRect.left) / this.zoomLevel,
+            y: (canvasRect.top - containerRect.top) / this.zoomLevel
+        };
     }
 
     loadCanvasFromData(canvasData) {
@@ -729,8 +807,8 @@ class DrawingGame {
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) / (this.canvasScale * this.zoomLevel),
+            y: (e.clientY - rect.top) / (this.canvasScale * this.zoomLevel)
         };
     }
 
@@ -1258,56 +1336,53 @@ class DrawingGame {
         const overlay = document.getElementById('imageOverlay');
         const imageContainer = overlay.querySelector('.image-container');
         const overlayImage = document.getElementById('overlayImage');
-        
-        // Get canvas position and dimensions
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        
-        // Calculate canvas offset within the container
-        const canvasOffsetX = canvasRect.left - containerRect.left;
-        const canvasOffsetY = canvasRect.top - containerRect.top;
-        
+
+        // Ensure we have the latest canvas transform
+        this.updateCanvasTransform();
+        const canvasScale = this.canvasScale;
+        const canvasOffsetX = this.canvasOffset.x;
+        const canvasOffsetY = this.canvasOffset.y;
+
         // Scale image to fit within canvas while maintaining aspect ratio
         const maxWidth = this.canvas.width * 0.5;
         const maxHeight = this.canvas.height * 0.5;
-        
+
         let newWidth = img.naturalWidth;
         let newHeight = img.naturalHeight;
-        
+
         if (newWidth > maxWidth) {
             newHeight = (newHeight * maxWidth) / newWidth;
             newWidth = maxWidth;
         }
-        
+
         if (newHeight > maxHeight) {
             newWidth = (newWidth * maxHeight) / newHeight;
             newHeight = maxHeight;
         }
-        
+
         this.imageSize = { width: newWidth, height: newHeight };
-        
+
         // Position relative to canvas center
-        const canvasScale = canvasRect.width / this.canvas.width;
-        this.imagePosition = { 
-            x: (this.canvas.width - newWidth) / 2, 
-            y: (this.canvas.height - newHeight) / 2 
+        this.imagePosition = {
+            x: (this.canvas.width - newWidth) / 2,
+            y: (this.canvas.height - newHeight) / 2
         };
-        
-        // Convert canvas coordinates to screen coordinates for overlay
+
+        // Convert canvas coordinates to container coordinates for overlay
         const screenX = canvasOffsetX + (this.imagePosition.x * canvasScale);
         const screenY = canvasOffsetY + (this.imagePosition.y * canvasScale);
         const screenWidth = newWidth * canvasScale;
         const screenHeight = newHeight * canvasScale;
-        
-        // Set overlay image properties with screen coordinates
+
+        // Set overlay image properties with container coordinates
         overlayImage.src = img.src;
         overlayImage.style.width = screenWidth + 'px';
         overlayImage.style.height = screenHeight + 'px';
-        
+
         // Position the container instead of the image
         imageContainer.style.left = screenX + 'px';
         imageContainer.style.top = screenY + 'px';
-        
+
         // Store scale factor for later use
         this.canvasScale = canvasScale;
         this.canvasOffset = { x: canvasOffsetX, y: canvasOffsetY };
@@ -1371,8 +1446,8 @@ class DrawingGame {
         const imageContainer = overlay.querySelector('.image-container');
         const rect = imageContainer.getBoundingClientRect();
         this.dragOffset = {
-            x: coords.clientX - rect.left,
-            y: coords.clientY - rect.top
+            x: (coords.clientX - rect.left) / this.zoomLevel,
+            y: (coords.clientY - rect.top) / this.zoomLevel
         };
         
         // Add both mouse and touch event listeners
@@ -1410,9 +1485,9 @@ class DrawingGame {
         
         // Calculate mouse position relative to container
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        const mouseX = coords.clientX - containerRect.left;
-        const mouseY = coords.clientY - containerRect.top;
-        
+        const mouseX = (coords.clientX - containerRect.left) / this.zoomLevel;
+        const mouseY = (coords.clientY - containerRect.top) / this.zoomLevel;
+
         // Convert to canvas coordinates
         const canvasX = (mouseX - this.canvasOffset.x - this.dragOffset.x) / this.canvasScale;
         const canvasY = (mouseY - this.canvasOffset.y - this.dragOffset.y) / this.canvasScale;
@@ -1453,8 +1528,10 @@ class DrawingGame {
         
         // Convert mouse position to canvas coordinates
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        const mouseCanvasX = (coords.clientX - containerRect.left - this.canvasOffset.x) / this.canvasScale;
-        const mouseCanvasY = (coords.clientY - containerRect.top - this.canvasOffset.y) / this.canvasScale;
+        const mouseX = (coords.clientX - containerRect.left) / this.zoomLevel;
+        const mouseY = (coords.clientY - containerRect.top) / this.zoomLevel;
+        const mouseCanvasX = (mouseX - this.canvasOffset.x) / this.canvasScale;
+        const mouseCanvasY = (mouseY - this.canvasOffset.y) / this.canvasScale;
         
         let newWidth = this.imageSize.width;
         let newHeight = this.imageSize.height;
@@ -1604,45 +1681,41 @@ class DrawingGame {
 
     addFloatingImageLocal(imageMessage) {
         const container = document.getElementById('floatingImages');
-        
+
+        // Ensure we have the latest canvas position/scale
+        this.updateCanvasTransform();
+
         // Create floating image element
         const floatingImg = document.createElement('img');
         floatingImg.id = imageMessage.imageId;
         floatingImg.className = 'floating-image';
         floatingImg.src = imageMessage.imageData;
-        
+
         // Store canvas coordinates in data attributes for repositioning
         floatingImg.dataset.canvasX = imageMessage.imageX;
         floatingImg.dataset.canvasY = imageMessage.imageY;
         floatingImg.dataset.canvasWidth = imageMessage.imageWidth;
         floatingImg.dataset.canvasHeight = imageMessage.imageHeight;
-        
-        // Get canvas position and scale for coordinate conversion
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const canvasOffsetX = canvasRect.left;
-        const canvasOffsetY = canvasRect.top;
-        const canvasScale = this.canvas.width / canvasRect.width;
-        
-        // Convert canvas coordinates to screen coordinates
-        // imageMessage coordinates are already in canvas pixels
-        const screenX = canvasOffsetX + (imageMessage.imageX / canvasScale);
-        const screenY = canvasOffsetY + (imageMessage.imageY / canvasScale);
-        const screenWidth = imageMessage.imageWidth / canvasScale;
-        const screenHeight = imageMessage.imageHeight / canvasScale;
-        
-        // Position the floating image relative to the page (not canvas container)
-        floatingImg.style.position = 'fixed';
+
+        // Convert canvas coordinates to container coordinates
+        const screenX = this.canvasOffset.x + (imageMessage.imageX * this.canvasScale);
+        const screenY = this.canvasOffset.y + (imageMessage.imageY * this.canvasScale);
+        const screenWidth = imageMessage.imageWidth * this.canvasScale;
+        const screenHeight = imageMessage.imageHeight * this.canvasScale;
+
+        // Position the floating image relative to the canvas container
+        floatingImg.style.position = 'absolute';
         floatingImg.style.left = screenX + 'px';
         floatingImg.style.top = screenY + 'px';
         floatingImg.style.width = screenWidth + 'px';
         floatingImg.style.height = screenHeight + 'px';
-        
+
         container.appendChild(floatingImg);
         
         // console.log('Added floating image:', imageMessage.imageId, {
         //     canvasCoords: { x: imageMessage.imageX, y: imageMessage.imageY, w: imageMessage.imageWidth, h: imageMessage.imageHeight },
         //     screenCoords: { x: screenX, y: screenY, w: screenWidth, h: screenHeight },
-        //     canvasRect: { x: canvasOffsetX, y: canvasOffsetY, scale: canvasScale }
+        //     transform: { offset: this.canvasOffset, scale: this.canvasScale }
         // });
     }
 
@@ -1663,29 +1736,26 @@ class DrawingGame {
     repositionFloatingImages() {
         const container = document.getElementById('floatingImages');
         const images = container.querySelectorAll('.floating-image');
-        
+
         if (images.length === 0) return;
-        
-        // Get current canvas position and scale
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const canvasOffsetX = canvasRect.left;
-        const canvasOffsetY = canvasRect.top;
-        const canvasScale = this.canvas.width / canvasRect.width;
-        
+
+        // Ensure we have the latest canvas position/scale
+        this.updateCanvasTransform();
+
         images.forEach(img => {
             // Get stored canvas coordinates from data attributes
             const canvasX = parseFloat(img.dataset.canvasX);
             const canvasY = parseFloat(img.dataset.canvasY);
             const canvasWidth = parseFloat(img.dataset.canvasWidth);
             const canvasHeight = parseFloat(img.dataset.canvasHeight);
-            
+
             if (!isNaN(canvasX) && !isNaN(canvasY)) {
-                // Recalculate screen position
-                const screenX = canvasOffsetX + (canvasX / canvasScale);
-                const screenY = canvasOffsetY + (canvasY / canvasScale);
-                const screenWidth = canvasWidth / canvasScale;
-                const screenHeight = canvasHeight / canvasScale;
-                
+                // Recalculate container position based on current scale
+                const screenX = this.canvasOffset.x + (canvasX * this.canvasScale);
+                const screenY = this.canvasOffset.y + (canvasY * this.canvasScale);
+                const screenWidth = canvasWidth * this.canvasScale;
+                const screenHeight = canvasHeight * this.canvasScale;
+
                 img.style.left = screenX + 'px';
                 img.style.top = screenY + 'px';
                 img.style.width = screenWidth + 'px';
@@ -1703,6 +1773,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // Handle window resize
 window.addEventListener('resize', () => {
     if (window.game) {
+        window.game.updateCanvasTransform();
         window.game.repositionFloatingImages();
     }
 });

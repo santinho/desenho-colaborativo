@@ -11,6 +11,7 @@
 - **Multi-usuário**: Vários jogadores por sala
 - **Reconexão automática** em caso de queda
 - **Interface responsiva** para desktop e mobile
+- **Zoom**: Aproximar/Afastar o canvas com Alt + ↑ / Alt + ↓ ou gesto de pinça no touch
 
 ## 🛠️ Tecnologias
 
