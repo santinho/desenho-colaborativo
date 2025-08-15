@@ -126,11 +126,14 @@ public class DrawingWebSocket {
         
         // Send current canvas data to the new player
         room = roomService.getRoom(roomId);
-        if (room != null && room.getCanvasData() != null && !room.getCanvasData().isEmpty()) {
-            // logger.info("Sending existing canvas data to new player");
-            sendCanvasData(session, room.getCanvasData());
-        } else {
-            // logger.info("No existing canvas data found for room " + roomId);
+        if (room != null) {
+            if (room.getCanvasData() != null && !room.getCanvasData().isEmpty()) {
+                // logger.info("Sending existing canvas data to new player");
+                sendCanvasData(session, room.getCanvasData());
+            }
+
+            // Send existing floating images to the new player
+            roomService.getFloatingImages(roomId).forEach(img -> sendMessage(session, img));
         }
         
         // Broadcast updated player list
@@ -210,6 +213,7 @@ public class DrawingWebSocket {
     
     private void clearCanvas(String roomId, Session session) {
         roomService.updateRoomCanvas(roomId, null);
+        roomService.clearFloatingImages(roomId);
         
         // Broadcast clear canvas to all players in the room
         Map<Session, String> sessions = roomSessions.get(roomId);
@@ -266,7 +270,10 @@ public class DrawingWebSocket {
             sendErrorMessage(sender, "Você não está na sala especificada");
             return;
         }
-        
+
+        // Store image in room state
+        roomService.addFloatingImageToRoom(roomId, message);
+
         // Broadcast to all users in the room (including sender for confirmation)
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
@@ -283,7 +290,10 @@ public class DrawingWebSocket {
     private void removeFloatingImage(DrawingMessage message, Session sender) {
         String roomId = message.getRoomId();
         // logger.info("Removing floating image from room: " + roomId + " imageId: " + message.getImageId());
-        
+
+        // Remove image from room state
+        roomService.removeFloatingImageFromRoom(roomId, message.getImageId());
+
         // Broadcast to all users in the room
         broadcastToRoom(roomId, message, sender);
     }
