@@ -36,7 +36,7 @@ class DrawingGame {
         // Zoom properties
         this.zoomLevel = 1;
         this.minZoom = 0.5;
-        this.maxZoom = 3;
+        this.maxZoom = 20;
 
         // Pinch zoom properties
         this.isPinching = false;
