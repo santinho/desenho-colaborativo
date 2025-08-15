@@ -1,6 +1,6 @@
 /**
  * Desenho Colaborativo - Script Principal
- * Versão: 20250130019 - Filtro de transparência estendido para cinzas mais escuros (161+)
+ * Versão: 20250130020 - Adicionado modo de navegação para zoom e movimento do canvas
  * Cache-Control: no-cache, no-store, must-revalidate
  */
 
@@ -42,6 +42,11 @@ class DrawingGame {
         this.isPinching = false;
         this.pinchStartDist = 0;
         this.pinchStartZoom = 1;
+
+        // Pan properties
+        this.isPanning = false;
+        this.panStart = { x: 0, y: 0 };
+        this.panOffset = { x: 0, y: 0 };
         
         this.initializeEventListeners();
         this.showLoginScreen();
@@ -65,6 +70,7 @@ class DrawingGame {
         document.getElementById('brushTool').addEventListener('click', () => this.selectTool('brush'));
         document.getElementById('eraserTool').addEventListener('click', () => this.selectTool('eraser'));
         document.getElementById('sprayTool').addEventListener('click', () => this.selectTool('spray'));
+        document.getElementById('panTool').addEventListener('click', () => this.selectTool('pan'));
         
         // Image selection
         document.getElementById('uploadImageBtn').addEventListener('click', () => {
@@ -141,7 +147,8 @@ class DrawingGame {
 
         document.addEventListener('wheel', (e) => {
             if (!this.canvas) return;
-            if (e.altKey && this.canvas.contains(e.target)) {
+            const overCanvas = document.querySelector('.canvas-container').contains(e.target);
+            if (overCanvas && (e.altKey || this.currentTool === 'pan')) {
                 e.preventDefault();
                 const delta = e.deltaY < 0 ? 0.1 : -0.1;
                 this.changeZoom(delta);
@@ -680,38 +687,69 @@ class DrawingGame {
         this.ctx.lineJoin = 'round';
         
         // Add event listeners
-        this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
-        this.canvas.addEventListener('mousemove', (e) => this.draw(e));
-        this.canvas.addEventListener('mouseup', () => this.stopDrawing());
-        this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (this.currentTool === 'pan') {
+                this.startPan(e);
+            } else {
+                this.startDrawing(e);
+            }
+        });
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.currentTool === 'pan') {
+                this.panCanvas(e);
+            } else {
+                this.draw(e);
+            }
+        });
+        this.canvas.addEventListener('mouseup', () => {
+            if (this.currentTool === 'pan') {
+                this.stopPan();
+            } else {
+                this.stopDrawing();
+            }
+        });
+        this.canvas.addEventListener('mouseout', () => {
+            if (this.currentTool === 'pan') {
+                this.stopPan();
+            } else {
+                this.stopDrawing();
+            }
+        });
         
         // Touch events for mobile
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (e.touches.length === 1) {
+            if (this.currentTool === 'pan') {
+                if (e.touches.length === 1) {
+                    this.startPan(e.touches[0]);
+                } else if (e.touches.length === 2) {
+                    this.isPinching = true;
+                    const [t1, t2] = e.touches;
+                    this.pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    this.pinchStartZoom = this.zoomLevel;
+                }
+            } else if (e.touches.length === 1) {
                 const touch = e.touches[0];
                 const mouseEvent = new MouseEvent('mousedown', {
                     clientX: touch.clientX,
                     clientY: touch.clientY
                 });
                 this.canvas.dispatchEvent(mouseEvent);
-            } else if (e.touches.length === 2) {
-                this.stopDrawing();
-                this.isPinching = true;
-                const [t1, t2] = e.touches;
-                this.pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-                this.pinchStartZoom = this.zoomLevel;
             }
         });
 
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            if (this.isPinching && e.touches.length === 2) {
-                const [t1, t2] = e.touches;
-                const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-                const scale = currentDist / this.pinchStartDist;
-                const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.pinchStartZoom * scale));
-                this.changeZoom(newZoom - this.zoomLevel);
+            if (this.currentTool === 'pan') {
+                if (this.isPinching && e.touches.length === 2) {
+                    const [t1, t2] = e.touches;
+                    const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                    const scale = currentDist / this.pinchStartDist;
+                    const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.pinchStartZoom * scale));
+                    this.changeZoom(newZoom - this.zoomLevel);
+                } else if (e.touches.length === 1) {
+                    this.panCanvas(e.touches[0]);
+                }
             } else if (e.touches.length === 1) {
                 const touch = e.touches[0];
                 const mouseEvent = new MouseEvent('mousemove', {
@@ -724,9 +762,13 @@ class DrawingGame {
 
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            if (this.isPinching) {
-                if (e.touches.length < 2) {
-                    this.isPinching = false;
+            if (this.currentTool === 'pan') {
+                if (this.isPinching) {
+                    if (e.touches.length < 2) {
+                        this.isPinching = false;
+                    }
+                } else {
+                    this.stopPan();
                 }
             } else {
                 const mouseEvent = new MouseEvent('mouseup', {});
@@ -735,7 +777,7 @@ class DrawingGame {
         });
 
         // Initialize transform values for accurate positioning
-        canvasContainer.style.transform = `scale(${this.zoomLevel})`;
+        canvasContainer.style.transform = `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoomLevel})`;
         this.updateCanvasTransform();
     }
 
@@ -744,7 +786,7 @@ class DrawingGame {
         if (newZoom === this.zoomLevel) return;
         this.zoomLevel = newZoom;
         const container = document.querySelector('.canvas-container');
-        container.style.transform = `scale(${this.zoomLevel})`;
+        container.style.transform = `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoomLevel})`;
         this.updateCanvasTransform();
         this.repositionFloatingImages();
     }
@@ -791,13 +833,15 @@ class DrawingGame {
 
     selectTool(tool) {
         this.currentTool = tool;
-        
+
         // Update UI
         document.querySelectorAll('.tool').forEach(btn => btn.classList.remove('active'));
         document.getElementById(tool + 'Tool').classList.add('active');
-        
+
         // Update cursor
         if (tool === 'eraser') {
+            this.canvas.style.cursor = 'grab';
+        } else if (tool === 'pan') {
             this.canvas.style.cursor = 'grab';
         } else {
             this.canvas.style.cursor = 'crosshair';
@@ -810,6 +854,32 @@ class DrawingGame {
             x: (e.clientX - rect.left) / (this.canvasScale * this.zoomLevel),
             y: (e.clientY - rect.top) / (this.canvasScale * this.zoomLevel)
         };
+    }
+
+    startPan(e) {
+        this.isPanning = true;
+        this.canvas.style.cursor = 'grabbing';
+        this.panStart = { x: e.clientX, y: e.clientY };
+    }
+
+    panCanvas(e) {
+        if (!this.isPanning) return;
+        const dx = e.clientX - this.panStart.x;
+        const dy = e.clientY - this.panStart.y;
+        this.panStart = { x: e.clientX, y: e.clientY };
+        this.panOffset.x += dx;
+        this.panOffset.y += dy;
+        const container = document.querySelector('.canvas-container');
+        container.style.transform = `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoomLevel})`;
+        this.updateCanvasTransform();
+        this.repositionFloatingImages();
+    }
+
+    stopPan() {
+        this.isPanning = false;
+        if (this.currentTool === 'pan') {
+            this.canvas.style.cursor = 'grab';
+        }
     }
 
     startDrawing(e) {

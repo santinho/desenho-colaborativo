@@ -11,7 +11,7 @@
 - **Multi-usuário**: Vários jogadores por sala
 - **Reconexão automática** em caso de queda
 - **Interface responsiva** para desktop e mobile
-- **Zoom**: Aproximar/Afastar o canvas com Alt + ↑ / Alt + ↓ ou gesto de pinça no touch
+- **Zoom e movimentação**: Use o botão ✋ para habilitar o modo navegação, arraste para mover a tela e utilize a roda do mouse ou gesto de pinça para aproximar/afastar o canvas
 
 ## 🛠️ Tecnologias
 
