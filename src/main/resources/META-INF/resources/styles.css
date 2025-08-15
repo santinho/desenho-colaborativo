@@ -168,6 +168,8 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     min-height: 50px;
+    position: relative;
+    z-index: 1000;
 }
 
 .tool-group {
