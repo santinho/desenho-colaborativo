@@ -726,10 +726,10 @@ class DrawingGame {
         if (!this.canvas) return;
         const canvasRect = this.canvas.getBoundingClientRect();
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        this.canvasScale = canvasRect.width / this.canvas.width;
+        this.canvasScale = (canvasRect.width / this.canvas.width) / this.zoomLevel;
         this.canvasOffset = {
-            x: canvasRect.left - containerRect.left,
-            y: canvasRect.top - containerRect.top
+            x: (canvasRect.left - containerRect.left) / this.zoomLevel,
+            y: (canvasRect.top - containerRect.top) / this.zoomLevel
         };
     }
 
@@ -780,8 +780,8 @@ class DrawingGame {
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
         return {
-            x: (e.clientX - rect.left) / this.canvasScale,
-            y: (e.clientY - rect.top) / this.canvasScale
+            x: (e.clientX - rect.left) / (this.canvasScale * this.zoomLevel),
+            y: (e.clientY - rect.top) / (this.canvasScale * this.zoomLevel)
         };
     }
 
@@ -1309,56 +1309,53 @@ class DrawingGame {
         const overlay = document.getElementById('imageOverlay');
         const imageContainer = overlay.querySelector('.image-container');
         const overlayImage = document.getElementById('overlayImage');
-        
-        // Get canvas position and dimensions
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        
-        // Calculate canvas offset within the container
-        const canvasOffsetX = canvasRect.left - containerRect.left;
-        const canvasOffsetY = canvasRect.top - containerRect.top;
-        
+
+        // Ensure we have the latest canvas transform
+        this.updateCanvasTransform();
+        const canvasScale = this.canvasScale;
+        const canvasOffsetX = this.canvasOffset.x;
+        const canvasOffsetY = this.canvasOffset.y;
+
         // Scale image to fit within canvas while maintaining aspect ratio
         const maxWidth = this.canvas.width * 0.5;
         const maxHeight = this.canvas.height * 0.5;
-        
+
         let newWidth = img.naturalWidth;
         let newHeight = img.naturalHeight;
-        
+
         if (newWidth > maxWidth) {
             newHeight = (newHeight * maxWidth) / newWidth;
             newWidth = maxWidth;
         }
-        
+
         if (newHeight > maxHeight) {
             newWidth = (newWidth * maxHeight) / newHeight;
             newHeight = maxHeight;
         }
-        
+
         this.imageSize = { width: newWidth, height: newHeight };
-        
+
         // Position relative to canvas center
-        const canvasScale = canvasRect.width / this.canvas.width;
-        this.imagePosition = { 
-            x: (this.canvas.width - newWidth) / 2, 
-            y: (this.canvas.height - newHeight) / 2 
+        this.imagePosition = {
+            x: (this.canvas.width - newWidth) / 2,
+            y: (this.canvas.height - newHeight) / 2
         };
-        
-        // Convert canvas coordinates to screen coordinates for overlay
+
+        // Convert canvas coordinates to container coordinates for overlay
         const screenX = canvasOffsetX + (this.imagePosition.x * canvasScale);
         const screenY = canvasOffsetY + (this.imagePosition.y * canvasScale);
         const screenWidth = newWidth * canvasScale;
         const screenHeight = newHeight * canvasScale;
-        
-        // Set overlay image properties with screen coordinates
+
+        // Set overlay image properties with container coordinates
         overlayImage.src = img.src;
         overlayImage.style.width = screenWidth + 'px';
         overlayImage.style.height = screenHeight + 'px';
-        
+
         // Position the container instead of the image
         imageContainer.style.left = screenX + 'px';
         imageContainer.style.top = screenY + 'px';
-        
+
         // Store scale factor for later use
         this.canvasScale = canvasScale;
         this.canvasOffset = { x: canvasOffsetX, y: canvasOffsetY };
@@ -1422,8 +1419,8 @@ class DrawingGame {
         const imageContainer = overlay.querySelector('.image-container');
         const rect = imageContainer.getBoundingClientRect();
         this.dragOffset = {
-            x: coords.clientX - rect.left,
-            y: coords.clientY - rect.top
+            x: (coords.clientX - rect.left) / this.zoomLevel,
+            y: (coords.clientY - rect.top) / this.zoomLevel
         };
         
         // Add both mouse and touch event listeners
@@ -1461,9 +1458,9 @@ class DrawingGame {
         
         // Calculate mouse position relative to container
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        const mouseX = coords.clientX - containerRect.left;
-        const mouseY = coords.clientY - containerRect.top;
-        
+        const mouseX = (coords.clientX - containerRect.left) / this.zoomLevel;
+        const mouseY = (coords.clientY - containerRect.top) / this.zoomLevel;
+
         // Convert to canvas coordinates
         const canvasX = (mouseX - this.canvasOffset.x - this.dragOffset.x) / this.canvasScale;
         const canvasY = (mouseY - this.canvasOffset.y - this.dragOffset.y) / this.canvasScale;
@@ -1504,8 +1501,10 @@ class DrawingGame {
         
         // Convert mouse position to canvas coordinates
         const containerRect = this.canvas.parentElement.getBoundingClientRect();
-        const mouseCanvasX = (coords.clientX - containerRect.left - this.canvasOffset.x) / this.canvasScale;
-        const mouseCanvasY = (coords.clientY - containerRect.top - this.canvasOffset.y) / this.canvasScale;
+        const mouseX = (coords.clientX - containerRect.left) / this.zoomLevel;
+        const mouseY = (coords.clientY - containerRect.top) / this.zoomLevel;
+        const mouseCanvasX = (mouseX - this.canvasOffset.x) / this.canvasScale;
+        const mouseCanvasY = (mouseY - this.canvasOffset.y) / this.canvasScale;
         
         let newWidth = this.imageSize.width;
         let newHeight = this.imageSize.height;
@@ -1671,11 +1670,11 @@ class DrawingGame {
         floatingImg.dataset.canvasWidth = imageMessage.imageWidth;
         floatingImg.dataset.canvasHeight = imageMessage.imageHeight;
 
-        // Convert canvas coordinates to screen coordinates without applying zoom again
-        const screenX = this.canvasOffset.x + imageMessage.imageX;
-        const screenY = this.canvasOffset.y + imageMessage.imageY;
-        const screenWidth = imageMessage.imageWidth;
-        const screenHeight = imageMessage.imageHeight;
+        // Convert canvas coordinates to container coordinates
+        const screenX = this.canvasOffset.x + (imageMessage.imageX * this.canvasScale);
+        const screenY = this.canvasOffset.y + (imageMessage.imageY * this.canvasScale);
+        const screenWidth = imageMessage.imageWidth * this.canvasScale;
+        const screenHeight = imageMessage.imageHeight * this.canvasScale;
 
         // Position the floating image relative to the canvas container
         floatingImg.style.position = 'absolute';
@@ -1724,14 +1723,16 @@ class DrawingGame {
             const canvasHeight = parseFloat(img.dataset.canvasHeight);
 
             if (!isNaN(canvasX) && !isNaN(canvasY)) {
-                // Recalculate screen position without applying zoom twice
-                const screenX = this.canvasOffset.x + canvasX;
-                const screenY = this.canvasOffset.y + canvasY;
+                // Recalculate container position based on current scale
+                const screenX = this.canvasOffset.x + (canvasX * this.canvasScale);
+                const screenY = this.canvasOffset.y + (canvasY * this.canvasScale);
+                const screenWidth = canvasWidth * this.canvasScale;
+                const screenHeight = canvasHeight * this.canvasScale;
 
                 img.style.left = screenX + 'px';
                 img.style.top = screenY + 'px';
-                img.style.width = canvasWidth + 'px';
-                img.style.height = canvasHeight + 'px';
+                img.style.width = screenWidth + 'px';
+                img.style.height = screenHeight + 'px';
             }
         });
     }
