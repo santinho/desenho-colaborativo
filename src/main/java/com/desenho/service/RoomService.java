@@ -65,6 +65,9 @@ public class RoomService {
     public void addFloatingImage(String roomId, DrawingMessage image) {
         Room room = getRoom(roomId);
         if (room != null) {
+            if (image.getImageId() == null || image.getImageId().isBlank()) {
+                image.setImageId(java.util.UUID.randomUUID().toString());
+            }
             room.addFloatingImage(image);
         }
     }

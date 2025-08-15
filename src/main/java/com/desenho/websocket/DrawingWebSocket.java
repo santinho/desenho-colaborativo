@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ServerEndpoint("/drawing")
@@ -273,6 +274,9 @@ public class DrawingWebSocket {
         }
         
         // Store image in room state
+        if (message.getImageId() == null || message.getImageId().isBlank()) {
+            message.setImageId(UUID.randomUUID().toString());
+        }
         roomService.addFloatingImage(roomId, message);
 
         // Broadcast to all users in the room (including sender for confirmation)
