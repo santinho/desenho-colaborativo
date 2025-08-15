@@ -1,7 +1,9 @@
 package com.desenho.service;
 
 import com.desenho.model.Room;
+import com.desenho.model.DrawingMessage;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Random;
@@ -58,6 +60,25 @@ public class RoomService {
         if (room != null) {
             room.updateCanvas(canvasData);
         }
+    }
+
+    public void addFloatingImage(String roomId, DrawingMessage image) {
+        Room room = getRoom(roomId);
+        if (room != null) {
+            room.addFloatingImage(image);
+        }
+    }
+
+    public void removeFloatingImage(String roomId, String imageId) {
+        Room room = getRoom(roomId);
+        if (room != null) {
+            room.removeFloatingImage(imageId);
+        }
+    }
+
+    public Collection<DrawingMessage> getFloatingImages(String roomId) {
+        Room room = getRoom(roomId);
+        return room != null ? room.getFloatingImages().values() : java.util.Collections.emptyList();
     }
     
     private String generateRoomCode() {
