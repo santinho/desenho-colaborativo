@@ -73,10 +73,10 @@ public class DrawingWebSocket {
                 leaveRoom(message.getRoomId(), message.getPlayerName(), session);
                 break;
             case CANVAS_UPDATE:
-                updateCanvas(message.getRoomId(), message.getCanvasData(), session);
+                updateCanvas(message, session);
                 break;
             case FORCE_CANVAS_UPDATE:
-                forceUpdateCanvas(message.getRoomId(), message.getCanvasData(), session);
+                forceUpdateCanvas(message, session);
                 break;
             case DRAWING_ACTION:
                 broadcastDrawingAction(message, session);
@@ -160,39 +160,49 @@ public class DrawingWebSocket {
         // logger.info("Player " + playerName + " left room " + roomId);
     }
     
-    private void updateCanvas(String roomId, String canvasData, Session session) {
-        roomService.updateRoomCanvas(roomId, canvasData);
-        
-        // Broadcast canvas update to all other players in the room
+    private void updateCanvas(DrawingMessage message, Session session) {
+        String roomId = sessionToRoom.get(session);
+        if (roomId == null) {
+            sendErrorMessage(session, "Você não está na sala especificada");
+            return;
+        }
+
+        roomService.updateRoomCanvas(roomId, message.getCanvasData());
+
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            DrawingMessage message = new DrawingMessage();
-            message.setType(DrawingMessage.MessageType.CANVAS_UPDATE);
-            message.setRoomId(roomId);
-            message.setCanvasData(canvasData);
-            
+            DrawingMessage outbound = new DrawingMessage();
+            outbound.setType(DrawingMessage.MessageType.CANVAS_UPDATE);
+            outbound.setRoomId(roomId);
+            outbound.setCanvasData(message.getCanvasData());
+
             sessions.keySet().forEach(s -> {
                 if (!s.equals(session)) {
-                    sendMessage(s, message);
+                    sendMessage(s, outbound);
                 }
             });
         }
     }
-    
-    private void forceUpdateCanvas(String roomId, String canvasData, Session session) {
-        roomService.updateRoomCanvas(roomId, canvasData);
-        
-        // Broadcast FORCE canvas update to all other players in the room (for image uploads)
+
+    private void forceUpdateCanvas(DrawingMessage message, Session session) {
+        String roomId = sessionToRoom.get(session);
+        if (roomId == null) {
+            sendErrorMessage(session, "Você não está na sala especificada");
+            return;
+        }
+
+        roomService.updateRoomCanvas(roomId, message.getCanvasData());
+
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            DrawingMessage message = new DrawingMessage();
-            message.setType(DrawingMessage.MessageType.FORCE_CANVAS_UPDATE);
-            message.setRoomId(roomId);
-            message.setCanvasData(canvasData);
-            
+            DrawingMessage outbound = new DrawingMessage();
+            outbound.setType(DrawingMessage.MessageType.FORCE_CANVAS_UPDATE);
+            outbound.setRoomId(roomId);
+            outbound.setCanvasData(message.getCanvasData());
+
             sessions.keySet().forEach(s -> {
                 if (!s.equals(session)) {
-                    sendMessage(s, message);
+                    sendMessage(s, outbound);
                 }
             });
         }
