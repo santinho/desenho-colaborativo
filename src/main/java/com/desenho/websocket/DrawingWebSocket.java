@@ -73,10 +73,10 @@ public class DrawingWebSocket {
                 leaveRoom(message.getRoomId(), message.getPlayerName(), session);
                 break;
             case CANVAS_UPDATE:
-                updateCanvas(message.getRoomId(), message.getCanvasData(), session);
+                updateCanvas(message, session);
                 break;
             case FORCE_CANVAS_UPDATE:
-                forceUpdateCanvas(message.getRoomId(), message.getCanvasData(), session);
+                forceUpdateCanvas(message, session);
                 break;
             case DRAWING_ACTION:
                 broadcastDrawingAction(message, session);
@@ -126,11 +126,14 @@ public class DrawingWebSocket {
         
         // Send current canvas data to the new player
         room = roomService.getRoom(roomId);
-        if (room != null && room.getCanvasData() != null && !room.getCanvasData().isEmpty()) {
-            // logger.info("Sending existing canvas data to new player");
-            sendCanvasData(session, room.getCanvasData());
-        } else {
-            // logger.info("No existing canvas data found for room " + roomId);
+        if (room != null) {
+            if (room.getCanvasData() != null && !room.getCanvasData().isEmpty()) {
+                // logger.info("Sending existing canvas data to new player");
+                sendCanvasData(session, room.getCanvasData());
+            }
+
+            // Send existing floating images to the new player
+            roomService.getFloatingImages(roomId).forEach(img -> sendMessage(session, img));
         }
         
         // Broadcast updated player list
@@ -157,39 +160,49 @@ public class DrawingWebSocket {
         // logger.info("Player " + playerName + " left room " + roomId);
     }
     
-    private void updateCanvas(String roomId, String canvasData, Session session) {
-        roomService.updateRoomCanvas(roomId, canvasData);
-        
-        // Broadcast canvas update to all other players in the room
+    private void updateCanvas(DrawingMessage message, Session session) {
+        String roomId = sessionToRoom.get(session);
+        if (roomId == null) {
+            sendErrorMessage(session, "Você não está na sala especificada");
+            return;
+        }
+
+        roomService.updateRoomCanvas(roomId, message.getCanvasData());
+
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            DrawingMessage message = new DrawingMessage();
-            message.setType(DrawingMessage.MessageType.CANVAS_UPDATE);
-            message.setRoomId(roomId);
-            message.setCanvasData(canvasData);
-            
+            DrawingMessage outbound = new DrawingMessage();
+            outbound.setType(DrawingMessage.MessageType.CANVAS_UPDATE);
+            outbound.setRoomId(roomId);
+            outbound.setCanvasData(message.getCanvasData());
+
             sessions.keySet().forEach(s -> {
                 if (!s.equals(session)) {
-                    sendMessage(s, message);
+                    sendMessage(s, outbound);
                 }
             });
         }
     }
-    
-    private void forceUpdateCanvas(String roomId, String canvasData, Session session) {
-        roomService.updateRoomCanvas(roomId, canvasData);
-        
-        // Broadcast FORCE canvas update to all other players in the room (for image uploads)
+
+    private void forceUpdateCanvas(DrawingMessage message, Session session) {
+        String roomId = sessionToRoom.get(session);
+        if (roomId == null) {
+            sendErrorMessage(session, "Você não está na sala especificada");
+            return;
+        }
+
+        roomService.updateRoomCanvas(roomId, message.getCanvasData());
+
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            DrawingMessage message = new DrawingMessage();
-            message.setType(DrawingMessage.MessageType.FORCE_CANVAS_UPDATE);
-            message.setRoomId(roomId);
-            message.setCanvasData(canvasData);
-            
+            DrawingMessage outbound = new DrawingMessage();
+            outbound.setType(DrawingMessage.MessageType.FORCE_CANVAS_UPDATE);
+            outbound.setRoomId(roomId);
+            outbound.setCanvasData(message.getCanvasData());
+
             sessions.keySet().forEach(s -> {
                 if (!s.equals(session)) {
-                    sendMessage(s, message);
+                    sendMessage(s, outbound);
                 }
             });
         }
@@ -210,6 +223,7 @@ public class DrawingWebSocket {
     
     private void clearCanvas(String roomId, Session session) {
         roomService.updateRoomCanvas(roomId, null);
+        roomService.clearFloatingImages(roomId);
         
         // Broadcast clear canvas to all players in the room
         Map<Session, String> sessions = roomSessions.get(roomId);
@@ -256,34 +270,37 @@ public class DrawingWebSocket {
     }
     
     private void addFloatingImage(DrawingMessage message, Session sender) {
-        String roomId = message.getRoomId();
-        // logger.info("Adding floating image to room: " + roomId + " imageId: " + message.getImageId());
-        
-        // Verify sender is in the room
-        String senderRoom = sessionToRoom.get(sender);
-        if (!roomId.equals(senderRoom)) {
-            // logger.warning("Session " + sender.getId() + " trying to add image to room " + roomId + " but is in room " + senderRoom);
+        // Determine room from session to avoid mismatches
+        String roomId = sessionToRoom.get(sender);
+        if (roomId == null) {
             sendErrorMessage(sender, "Você não está na sala especificada");
             return;
         }
-        
+
+        // Ensure message carries the correct room id
+        message.setRoomId(roomId);
+
+        // Store image in room state
+        roomService.addFloatingImageToRoom(roomId, message);
+
         // Broadcast to all users in the room (including sender for confirmation)
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            // logger.info("Broadcasting floating image to " + sessions.size() + " sessions in room " + roomId);
-            sessions.keySet().forEach(s -> {
-                // logger.info("Sending floating image to session " + s.getId() + " in room " + roomId);
-                sendMessage(s, message);
-            });
-        } else {
-            // logger.warning("No sessions found for room " + roomId);
+            sessions.keySet().forEach(s -> sendMessage(s, message));
         }
     }
-    
+
     private void removeFloatingImage(DrawingMessage message, Session sender) {
-        String roomId = message.getRoomId();
-        // logger.info("Removing floating image from room: " + roomId + " imageId: " + message.getImageId());
-        
+        // Determine room from session to avoid mismatches
+        String roomId = sessionToRoom.get(sender);
+        if (roomId == null) {
+            sendErrorMessage(sender, "Você não está na sala especificada");
+            return;
+        }
+
+        // Remove image from room state
+        roomService.removeFloatingImageFromRoom(roomId, message.getImageId());
+
         // Broadcast to all users in the room
         broadcastToRoom(roomId, message, sender);
     }
