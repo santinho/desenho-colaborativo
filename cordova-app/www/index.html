@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://desenho-colaborativo.onrender.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;" />
+  <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover" />
+  <title>Desenho Colaborativo</title>
+</head>
+<body>
+  <script src="cordova.js"></script>
+  <script>
+    document.addEventListener('deviceready', function () {
+      window.location.replace('https://desenho-colaborativo.onrender.com/');
+    }, false);
+  </script>
+</body>
+</html>

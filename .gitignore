@@ -43,3 +43,12 @@ build/
 
 # Quarkus
 .quarkus/
+
+# Cordova artifacts
+cordova-app/node_modules/
+cordova-app/platforms/
+cordova-app/plugins/
+
+# APK artifacts
+apks/
+

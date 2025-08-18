@@ -121,6 +121,17 @@ Quarkus oferece suporte nativo para:
 - OpenShift
 - Cloud providers (AWS, Azure, GCP)
 
+## 📱 Cordova mobile app
+
+Um wrapper Cordova está disponível no diretório `cordova-app` e redireciona para https://desenho-colaborativo.onrender.com/
+
+### Build
+```bash
+cd cordova-app
+cordova platform add android
+cordova build android
+```
+
 ## 📈 Próximas funcionalidades
 
 - [ ] Histórico de desenhos
