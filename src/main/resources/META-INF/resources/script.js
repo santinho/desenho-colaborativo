@@ -773,6 +773,7 @@ class DrawingGame {
         });
 
         // Initialize transform values for accurate positioning
+        const canvasContainer = document.querySelector('.canvas-container');
         canvasContainer.style.transform = `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoomLevel})`;
         this.updateCanvasTransform();
     }
