@@ -2,7 +2,16 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://desenho-colaborativo.onrender.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;" />
+  <meta http-equiv="Content-Security-Policy" content="
+  default-src 'self' https://desenho-colaborativo.onrender.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://desenho-colaborativo.onrender.com;
+  style-src  'self' 'unsafe-inline';
+  img-src    'self' data: blob:;
+  connect-src 'self' https://desenho-colaborativo.onrender.com wss://desenho-colaborativo.onrender.com;
+  media-src  *;
+  object-src 'none';
+  base-uri   'self';
+  ">
   <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover" />
   <title>Desenho Colaborativo</title>
 </head>
