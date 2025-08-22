@@ -675,12 +675,8 @@ class DrawingGame {
         this.ctx = this.canvas.getContext('2d');
         
         // Set canvas size
-        const canvasContainer = this.canvas.parentElement;
-        const maxWidth = canvasContainer.clientWidth - 40;
-        const maxHeight = canvasContainer.clientHeight - 40;
-        
-        this.canvas.width = Math.min(800, maxWidth);
-        this.canvas.height = Math.min(600, maxHeight);
+        this.canvas.width = 2000;
+        this.canvas.height = 2000;
         
         // Set up canvas
         this.ctx.lineCap = 'round';
@@ -777,6 +773,7 @@ class DrawingGame {
         });
 
         // Initialize transform values for accurate positioning
+        const canvasContainer = document.querySelector('.canvas-container');
         canvasContainer.style.transform = `translate(${this.panOffset.x}px, ${this.panOffset.y}px) scale(${this.zoomLevel})`;
         this.updateCanvasTransform();
     }
