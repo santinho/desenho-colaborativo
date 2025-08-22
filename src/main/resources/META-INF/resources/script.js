@@ -653,11 +653,12 @@ class DrawingGame {
             clearTimeout(this.joinRetryTimeout);
             this.joinRetryTimeout = null;
         }
-        
+
         this.currentRoom = null;
         this.playerName = null;
         this.isConnected = false;
         this.hasJoinedRoom = false;
+        this.clearFloatingImages();
         this.showLoginScreen();
     }
 
@@ -1761,6 +1762,11 @@ class DrawingGame {
 
     addFloatingImageLocal(imageMessage) {
         const container = document.getElementById('floatingImages');
+
+        // Avoid adding the same image twice (sender will receive its own broadcast)
+        if (document.getElementById(imageMessage.imageId)) {
+            return;
+        }
 
         // Ensure we have the latest canvas position/scale
         this.updateCanvasTransform();

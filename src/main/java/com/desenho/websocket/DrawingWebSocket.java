@@ -132,6 +132,11 @@ public class DrawingWebSocket {
         } else {
             // logger.info("No existing canvas data found for room " + roomId);
         }
+
+        // Send existing floating images to the new player
+        for (DrawingMessage img : roomService.getFloatingImages(roomId)) {
+            sendMessage(session, img);
+        }
         
         // Broadcast updated player list
         broadcastPlayerList(roomId);
@@ -267,6 +272,9 @@ public class DrawingWebSocket {
             return;
         }
         
+        // Store image in room state (service will assign an ID if needed)
+        roomService.addFloatingImage(roomId, message);
+
         // Broadcast to all users in the room (including sender for confirmation)
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
@@ -279,11 +287,14 @@ public class DrawingWebSocket {
             // logger.warning("No sessions found for room " + roomId);
         }
     }
-    
+
     private void removeFloatingImage(DrawingMessage message, Session sender) {
         String roomId = message.getRoomId();
         // logger.info("Removing floating image from room: " + roomId + " imageId: " + message.getImageId());
-        
+
+        // Remove from room state
+        roomService.removeFloatingImage(roomId, message.getImageId());
+
         // Broadcast to all users in the room
         broadcastToRoom(roomId, message, sender);
     }
