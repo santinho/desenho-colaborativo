@@ -10,8 +10,9 @@ import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import jakarta.websocket.server.ServerEndpointConfig;
 
-@ServerEndpoint("/drawing")
+@ServerEndpoint(value = "/drawing", configurator = DrawingWebSocketConfigurator.class)
 @ApplicationScoped
 public class DrawingWebSocket {
 
@@ -28,6 +29,9 @@ public class DrawingWebSocket {
     @OnOpen
     public void onOpen(Session session) {
         // logger.info("New WebSocket connection opened: " + session.getId());
+	session.setMaxTextMessageBufferSize(1024 * 1024* 10); // 1MB
+        session.setMaxBinaryMessageBufferSize(1024 * 1024* 10); // 1MB
+        session.setMaxIdleTimeout(300000); // 5 minutos timeout
     }
     
     @OnMessage
@@ -55,12 +59,12 @@ public class DrawingWebSocket {
         
         sessionToRoom.remove(session);
         sessionToPlayer.remove(session);
-        // logger.info("WebSocket connection closed: " + session.getId());
+        logger.severe("WebSocket connection closed: " + session.getId());
     }
     
     @OnError
     public void onError(Session session, Throwable throwable) {
-        // logger.severe("WebSocket error for session " + session.getId() + ": " + throwable.getMessage());
+        logger.severe("WebSocket error for session " + session.getId() + ": " + throwable.getMessage());
     }
     
     private void handleMessage(DrawingMessage message, Session session) {
@@ -256,18 +260,18 @@ public class DrawingWebSocket {
                 session.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
             }
         } catch (Exception e) {
-            // logger.severe("Error sending message to session " + session.getId() + ": " + e.getMessage());
+            logger.severe("Error sending message to session " + session.getId() + ": " + e.getMessage());
         }
     }
     
     private void addFloatingImage(DrawingMessage message, Session sender) {
         String roomId = message.getRoomId();
-        // logger.info("Adding floating image to room: " + roomId + " imageId: " + message.getImageId());
+        logger.info("Adding floating image to room: " + roomId + " imageId: " + message.getImageId());
         
         // Verify sender is in the room
         String senderRoom = sessionToRoom.get(sender);
         if (!roomId.equals(senderRoom)) {
-            // logger.warning("Session " + sender.getId() + " trying to add image to room " + roomId + " but is in room " + senderRoom);
+            logger.warning("Session " + sender.getId() + " trying to add image to room " + roomId + " but is in room " + senderRoom);
             sendErrorMessage(sender, "Você não está na sala especificada");
             return;
         }
@@ -278,13 +282,13 @@ public class DrawingWebSocket {
         // Broadcast to all users in the room (including sender for confirmation)
         Map<Session, String> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            // logger.info("Broadcasting floating image to " + sessions.size() + " sessions in room " + roomId);
+            logger.info("Broadcasting floating image to " + sessions.size() + " sessions in room " + roomId);
             sessions.keySet().forEach(s -> {
-                // logger.info("Sending floating image to session " + s.getId() + " in room " + roomId);
+                 logger.info("Sending floating image to session " + s.getId() + " in room " + roomId);
                 sendMessage(s, message);
             });
         } else {
-            // logger.warning("No sessions found for room " + roomId);
+            logger.warning("No sessions found for room " + roomId);
         }
     }
 
@@ -317,7 +321,7 @@ public class DrawingWebSocket {
                 session.getAsyncRemote().sendText("{\"error\":\"" + error + "\"}");
             }
         } catch (Exception e) {
-            // logger.severe("Error sending error message: " + e.getMessage());
+            logger.severe("Error sending error message: " + e.getMessage());
         }
     }
 }
